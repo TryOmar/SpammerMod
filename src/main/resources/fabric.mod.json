@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "spammer",
+	"version": "${version}",
+	"name": "spammer",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"Me!",
+		"Falcon"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/spammer/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.falcon.spammer.Spammer"
+		],
+		"fabric-datagen": [
+			"net.falcon.spammer.SpammerDataGenerator"
+		]
+	},
+	"mixins": [
+		"spammer.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.7",
+		"minecraft": "~1.20",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
