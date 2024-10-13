@@ -90,6 +90,12 @@ public class SpamManager {
     }
 
     public static void stop(String id){
+        if(id.isEmpty()){
+            spamStatus.clear();
+            ChatMessageHandler.sendSystemMessage("All spam stopped\n");
+            return;
+        }
+
         if(!SpamConfig.exists(id)){
             ChatMessageHandler.sendSystemMessage("Spam config ID does not exist: " + id + "\n");
             return;
@@ -99,6 +105,7 @@ public class SpamManager {
             ChatMessageHandler.sendSystemMessage("Spam is not running for ID: " + id + "\n");
             return;
         }
+
 
         spamStatus.put(id, false);
         ChatMessageHandler.sendSystemMessage("Spam stopped for ID: " + id + "\n");
@@ -131,12 +138,15 @@ public class SpamManager {
         Sleep(1000);
         ChatMessageHandler.sendSystemMessage("Spam starts in 1\n");
         Sleep(1000);
+        ChatMessageHandler.sendSystemMessage("Spam started\n");
+
 
         spamStatus.put(id, true);
         SpamConfig config = new SpamConfig(id);
+
         Thread thread = new Thread(() -> {
             try {
-                while (spamStatus.get(id)) {
+                while (spamStatus.getOrDefault(id, false)) {
                     ChatMessageHandler.sendChatMessage(config.getMessage());
                     long updateDelay = updateSpamConfig(config);
                     Sleep(config.getDelay() - updateDelay);
@@ -163,7 +173,6 @@ public class SpamManager {
         long startTime = System.currentTimeMillis();
         config.read();
         long endTime = System.currentTimeMillis();
-        Debugging.Spam("Spam config updated: " + config.id + ", delay: " + (endTime - startTime) + "\n");
         return endTime - startTime;
     }
 }
