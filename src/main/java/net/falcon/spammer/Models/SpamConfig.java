@@ -2,7 +2,6 @@ package net.falcon.spammer.Models;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.falcon.spammer.Managers.Debugging;
 import net.minecraft.client.MinecraftClient;
 
 import java.io.File;
@@ -10,7 +9,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class SpamConfig {
@@ -27,9 +25,7 @@ public class SpamConfig {
     private int postTriggerMessageCount = 20;
     private String[] messageTemplates = { "Hello man, how are you @<User>?", "What's up @<User>?", "How's everything going @<User>?", "Just checking in @<User>, hope all is good!" };
 
-    private List<String> messages;
-    private String command;
-    private int currentMessageIndex = 0;
+    private transient int currentMessageIndex = 0;
 
     public static String getUsername(){ return MinecraftClient.getInstance().getSession().getUsername(); }
 
@@ -58,12 +54,7 @@ public class SpamConfig {
 
     public void read() {
         File file = getFile(id);
-        if (!file.exists()) {
-            write(); // Create a new template if the file doesn't exist
-            populateMessages();
-            populateCommand();
-            return;
-        }
+        if (!file.exists()) { write(); return; }
 
         try (FileReader reader = new FileReader(file)) {
             SpamConfig loaded = GSON.fromJson(reader, SpamConfig.class);
@@ -77,26 +68,10 @@ public class SpamConfig {
                 this.isRandomized = loaded.isRandomized;
                 this.postTriggerMessageCount = loaded.postTriggerMessageCount;
                 this.messageTemplates = loaded.messageTemplates;
-                populateMessages();
-                populateCommand();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private void populateMessages() {
-        messages = new ArrayList<>();
-        String regex = "(?i)@<User>"; // Case-insensitive regex for <User>
-
-        for (String template : messageTemplates) {
-            messages.add(template.replaceAll(regex, targetUsername));
-        }
-    }
-
-    private void populateCommand() {
-        String regex = "(?i)@<User>"; // Case-insensitive regex for <User>
-        command = privateMessageCommand.replaceAll(regex, targetUsername);
     }
 
 
@@ -106,13 +81,13 @@ public class SpamConfig {
                 "    \"id\": \"" + id + "\",\n" +
                 "    \"targetUsername\": \"" + targetUsername + "\",\n" +
                 "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
-                "    \"command\": \"" + command + "\"\n" +
+                "    \"privateMessageCommand\": \"" + privateMessageCommand + "\"\n" +
                 "    \"triggerKeyword\": \"" + triggerKeyword + "\",\n" +
                 "    \"minInterval\": " + minInterval + ",\n" +
                 "    \"maxInterval\": " + maxInterval + ",\n" +
                 "    \"isRandomized\": " + isRandomized + ",\n" +
                 "    \"postTriggerMessageCount\": " + postTriggerMessageCount + ",\n" +
-                "    \"messages\": " + (messages != null ? messages.toString() : "null") + ",\n" +
+                "    \"messageTemplates\": " + messageTemplates + "\n" +
                 "}";
     }
 
@@ -135,16 +110,25 @@ public class SpamConfig {
 
     //  ----------------------------- Getters and Setters -----------------------------
     public String getMessage() {
-        if (messages == null || messages.isEmpty()) return "";
-        if (isRandomized) {
-            currentMessageIndex = (int) (Math.random() * messages.size());
-        } else {
-            currentMessageIndex = (currentMessageIndex + 1) % messages.size();
-        }
+        List<String> messages = new ArrayList<>();
+
+        String regex = "(?i)@<User>";
+        for (String template : messageTemplates) messages.add(template.replaceAll(regex, targetUsername));
+        if (messages.isEmpty()) return "";
+
+        if (isRandomized) currentMessageIndex = (int) (Math.random() * messages.size());
+        else currentMessageIndex = (currentMessageIndex + 1) % messages.size();
+
         return messages.get(currentMessageIndex);
     }
 
     public long getDelay() {
         return minInterval + (long) (Math.random() * (maxInterval - minInterval));
+    }
+
+
+    public String populateCommand() {
+        String regex = "(?i)@<User>"; // Case-insensitive regex for <User>
+        return privateMessageCommand.replaceAll(regex, targetUsername);
     }
 }
