@@ -18,10 +18,17 @@ public class SpamManager {
 
     public static void help(String message) {
         String helpMessage = "Spam Commands:\n" +
-                "!createSpam <id> - Create a new spam config file\n" +
-                "!showSpam <id> - Show the spam config file\n" +
-                "!deleteSpam <id> - Delete the spam config file\n";
+                "!helpSpam - Show this help message\n" +
+                "!showSpam <ID> - Show the spam config details\n" +
+                "!createSpam <ID> - Create a new spam config file\n" +
+                "!deleteSpam <ID> - Delete the spam config file\n" +
+                "!runSpam <ID> - Run the spam for the given ID\n" +
+                "!stopSpam <ID> - Stop the spam for the given ID\n" +
+                "!stopSpam - Stop all spam\n" +
+                "!folderSpam - Open the spam folder\n";
+
         ChatMessageHandler.sendSystemMessage(helpMessage);
+
     }
 
     public static void create(String id) {
@@ -127,6 +134,10 @@ public class SpamManager {
         MinecraftClient.getInstance().player.sendMessage(message, false);
     }
 
+    public static void test(String numberOfMessages){
+        ChatMessageHandler.sendSystemMessage("Test spam function:\n");
+    }
+
 
     // ----------------------------- Spam Functions -----------------------------
     public static void runSpam(String id) {
@@ -147,9 +158,28 @@ public class SpamManager {
         Thread thread = new Thread(() -> {
             try {
                 while (spamStatus.getOrDefault(id, false)) {
-                    ChatMessageHandler.sendChatMessage(config.getMessage());
+                    // --- Update the config ---
                     long updateDelay = updateSpamConfig(config);
-                    Sleep(config.getDelay() - updateDelay);
+
+                    // --- Wait for the triggers ---
+                    long delay = config.getDelay() - updateDelay;
+                    String triggerKeyword = config.triggerKeyword;
+                    int postTriggerMessageCount = config.postTriggerMessageCount;
+                    ChatMessageHandler.waitForChatTriggers(postTriggerMessageCount, triggerKeyword, delay);
+
+                    // --- Check if the spam is stopped ---
+                    if(!spamStatus.getOrDefault(id, false)) break;
+
+                    // --- Send the message ---
+                    String message = config.getMessage();
+                    boolean isPrivateMessage = config.isPrivateMessage;
+
+                    if(isPrivateMessage){
+                        String command = config.populateCommand();
+                        ChatMessageHandler.sendCommand(command + " " + message);
+                    } else {
+                        ChatMessageHandler.sendChatMessage(message);
+                    }
                 }
             } catch (Exception e) {
                 spamStatus.put(id, false);
