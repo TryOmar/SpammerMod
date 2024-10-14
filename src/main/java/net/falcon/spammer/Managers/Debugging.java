@@ -8,7 +8,7 @@ import java.io.IOException;
 import static com.mojang.text2speech.Narrator.LOGGER;
 
 public class Debugging {
-    private static final boolean DISALBE = false;
+    private static final boolean DISALBE = true;
     private static String currentScreen;
     public static final long MAX_FILE_SIZE = 1024 * 1024; // 1 MB limit
 
