@@ -59,6 +59,8 @@ public class ChatMessageHandler {
                 thread.start();
                 return false; // Prevent further processing of the message
             }
+
+            if(message.startsWith("!")) return false;
         }
         return true; // Allow the message to be processed normally if no command matches
     }
@@ -70,6 +72,10 @@ public class ChatMessageHandler {
         // Optionally log more details about the sender or message metadata
         if (profile != null) {
             LOGGER.info("Message sent by: " + profile.getName());
+        }
+
+        if(profile.getName().equals(MinecraftClient.getInstance().getSession().getUsername())) {
+            LOGGER.info("Message sent by self: " + profile.getName());
         }
     }
 
@@ -141,12 +147,14 @@ public class ChatMessageHandler {
         long startTime = System.currentTimeMillis();
 
         String lowerCaseSubstring = substring.toLowerCase(); // Convert substring to lowercase
+        if(substring.isEmpty()) substringMatched[0] = true;
+
 
         ClientReceiveMessageEvents.CHAT.register((messageText, signedMessage, profile, parameters, timestamp) -> {
             String fullMessage = messageText.getString().toLowerCase(); // Convert message to lowercase
             String senderName = profile != null ? profile.getName().toLowerCase() : "unknown";
 
-            messageCount[0]++;
+            if(!senderName.equals(MinecraftClient.getInstance().getSession().getUsername().toLowerCase())) ; messageCount[0]++;
             substringMatched[0] = substringMatched[0] || fullMessage.contains(lowerCaseSubstring) || senderName.contains(lowerCaseSubstring);
 
             if (messageCount[0] >= messageThreshold && substringMatched[0]) {
