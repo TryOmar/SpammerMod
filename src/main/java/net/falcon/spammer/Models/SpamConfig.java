@@ -16,13 +16,13 @@ public class SpamConfig {
 
     public final String id;
     private String targetUsername = "targetUser";
-    private boolean isPrivateMessage = false;
+    public boolean isPrivateMessage = false;
     private String privateMessageCommand = "/tell @<User>";
-    private String triggerKeyword = "hey";
+    public String triggerKeyword = "hey";
     private long minInterval = 3000;
     private long maxInterval = 6000;
     private boolean isRandomized = true;
-    private int postTriggerMessageCount = 20;
+    public int postTriggerMessageCount = 20;
     private String[] messageTemplates = { "Hello man, how are you @<User>?", "What's up @<User>?", "How's everything going @<User>?", "Just checking in @<User>, hope all is good!" };
 
     private transient int currentMessageIndex = 0;
@@ -129,6 +129,9 @@ public class SpamConfig {
 
     public String populateCommand() {
         String regex = "(?i)@<User>"; // Case-insensitive regex for <User>
-        return privateMessageCommand.replaceAll(regex, targetUsername);
+        String modifiedCommand = privateMessageCommand.replaceAll(regex, targetUsername);
+        // Remove the leading '/' if it exists
+        if (modifiedCommand.startsWith("/")) modifiedCommand = modifiedCommand.substring(1);
+        return modifiedCommand;
     }
 }
