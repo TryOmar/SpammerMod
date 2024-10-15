@@ -4,93 +4,72 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.client.MinecraftClient;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class SpamConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().disableInnerClassSerialization().create();
 
-    public final String id;
-    private String targetUsername = "targetUser";
-    public boolean isPrivateMessage = false;
-    private String privateMessageCommand = "/tell @<User>";
-    public String triggerKeyword = "hey";
-    private long minInterval = 3000;
-    private long maxInterval = 6000;
+    public String id;
+    private String targetUsername = getUsername();
+
+    public boolean isPrivateMessage = true;
+    private String privateMessageCommand = "/tell <User>";
+
+    //private long preMinInterval = 3000;
+    //private long preMaxInterval = 6000;
+
+    public String keywordTrigger = "hi";
+    public int messageCountTrigger = 2;
+
+    private long postMinInterval = 3000;
+    private long postMaxInterval = 6000;
+
     private boolean isRandomized = true;
-    public int postTriggerMessageCount = 20;
-    private String[] messageTemplates = { "Hello man, how are you @<User>?", "What's up @<User>?", "How's everything going @<User>?", "Just checking in @<User>, hope all is good!" };
+    private String[] messageTemplates = {
+            "Hello man, how are you @<User>? last message was: <LastMessage>",
+            "What's up @<User>? last message was: <LastMessage>",
+            "How's everything going @<User>? last message was: <LastMessage>",
+            "Just checking in @<User>, hope all is good! last message was: <LastMessage>",
 
-    private transient int currentMessageIndex = 0;
+    };
 
-    public static String getUsername(){ return MinecraftClient.getInstance().getSession().getUsername(); }
+    private transient long lastModifiedTime = System.currentTimeMillis();
+    private transient List<String> messages;
+    private transient List<Integer> selectionCounts;
+    private transient Random random = new Random(); // Initialize random
 
+    // -------------------- Constructor and Static Methods --------------------
     public SpamConfig(String id) {
         this.id = id;
         read();
+    } // Constructor
+
+    public static String getUsername() {
+        return MinecraftClient.getInstance().getSession().getUsername();
     }
 
-    private static File getFile(String id) {
-        File spamDir = new File("Spam");
-        if (!spamDir.exists()) spamDir.mkdir();
-        File userDir = new File(spamDir, getUsername());
-        if (!userDir.exists()) userDir.mkdir();
-        String filename =  id + ".json";
-        return new File(userDir, filename);
-    }
-
-    public void write() {
-        try (FileWriter writer = new FileWriter(getFile(id))) {
-            GSON.toJson(this, writer);
-            System.out.println("Spam template saved at: " + getFile(id).getPath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void read() {
+    public static void delete(String id) {
         File file = getFile(id);
-        if (!file.exists()) { write(); return; }
-
-        try (FileReader reader = new FileReader(file)) {
-            SpamConfig loaded = GSON.fromJson(reader, SpamConfig.class);
-            if (loaded != null) {
-                this.targetUsername = loaded.targetUsername;
-                this.isPrivateMessage = loaded.isPrivateMessage;
-                this.privateMessageCommand = loaded.privateMessageCommand;
-                this.triggerKeyword = loaded.triggerKeyword;
-                this.minInterval = loaded.minInterval;
-                this.maxInterval = loaded.maxInterval;
-                this.isRandomized = loaded.isRandomized;
-                this.postTriggerMessageCount = loaded.postTriggerMessageCount;
-                this.messageTemplates = loaded.messageTemplates;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        if (file.exists()) file.delete();
     }
 
-
-    @Override
-    public String toString() {
-        return "{\n" +
-                "    \"id\": \"" + id + "\",\n" +
-                "    \"targetUsername\": \"" + targetUsername + "\",\n" +
-                "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
-                "    \"privateMessageCommand\": \"" + privateMessageCommand + "\"\n" +
-                "    \"triggerKeyword\": \"" + triggerKeyword + "\",\n" +
-                "    \"minInterval\": " + minInterval + ",\n" +
-                "    \"maxInterval\": " + maxInterval + ",\n" +
-                "    \"isRandomized\": " + isRandomized + ",\n" +
-                "    \"postTriggerMessageCount\": " + postTriggerMessageCount + ",\n" +
-                "    \"messageTemplates\": " + messageTemplates + "\n" +
-                "}";
+    public static boolean rename(String oldId, String newId) {
+        File oldFile = getFile(oldId);
+        if(!oldFile.exists()) return false;
+        SpamConfig config = new SpamConfig(oldId);
+        SpamConfig.delete(oldId); // Delete the old file
+        config.id = newId;
+        config.read(); // Save the new file
+        return true;
     }
 
+    public static boolean exists(String id) {
+        return getFile(id).exists();
+    }
 
     public static List<String> getAllIds() {
         List<String> ids = new ArrayList<>();
@@ -100,38 +79,156 @@ public class SpamConfig {
             ids.add(file.getName().replace(".json", ""));
         return ids;
     }
-    public static boolean exists(String id) { return getFile(id).exists(); }
 
-    public static void delete(String id) {
+    private static File getFile(String id) {
+        File spamDir = new File("Spam");
+        if (!spamDir.exists()) spamDir.mkdir();
+        File userDir = new File(spamDir, getUsername());
+        if (!userDir.exists()) userDir.mkdir();
+        String filename = id + ".json";
+        return new File(userDir, filename);
+    }
+
+    // -------------------- Read/Write Configuration --------------------
+    public void read() {
         File file = getFile(id);
-        if (file.exists()) file.delete();
+        if (!file.exists()) {
+            // If the file doesn't exist, initialize values and create the file
+            try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+                GSON.toJson(this, writer);
+                lastModifiedTime = file.lastModified();
+                this.messages = populateMessages(); // Store the populated messages
+                this.selectionCounts = initializeSelectionCounts(this.messages.size()); // Initialize selection counts
+                System.out.println("Spam configuration created at: " + file.getPath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
+
+        // Load existing configuration
+        try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+            SpamConfig loaded = GSON.fromJson(reader, SpamConfig.class);
+            if (loaded != null) {
+                this.id = loaded.id;
+                this.targetUsername = loaded.targetUsername;
+                this.isPrivateMessage = loaded.isPrivateMessage;
+                this.privateMessageCommand = loaded.privateMessageCommand;
+                //this.preMinInterval = loaded.preMinInterval;
+                //this.preMaxInterval = loaded.preMaxInterval;
+
+                this.keywordTrigger = loaded.keywordTrigger;
+                this.messageCountTrigger = loaded.messageCountTrigger;
+
+                this.postMinInterval = loaded.postMinInterval;
+                this.postMaxInterval = loaded.postMaxInterval;
+
+                this.isRandomized = loaded.isRandomized;
+                this.messageTemplates = loaded.messageTemplates;
+                this.lastModifiedTime = file.lastModified();
+                if(messages == null || messages.isEmpty() || selectionCounts == null || selectionCounts.isEmpty() || messages != populateMessages()){
+                    this.messages = populateMessages(); // Store the populated messages
+                    this.selectionCounts = initializeSelectionCounts(this.messages.size()); // Initialize selection counts
+                }
+                System.out.println("Spam configuration loaded from file: " + file.getPath());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-
-    //  ----------------------------- Getters and Setters -----------------------------
-    public String getMessage() {
-        List<String> messages = new ArrayList<>();
-
-        String regex = "(?i)@<User>";
-        for (String template : messageTemplates) messages.add(template.replaceAll(regex, targetUsername));
-        if (messages.isEmpty()) return "";
-
-        if (isRandomized) currentMessageIndex = (int) (Math.random() * messages.size());
-        else currentMessageIndex = (currentMessageIndex + 1) % messages.size();
-
-        return messages.get(currentMessageIndex);
+    public void updateIfNeeded() {
+        File file = getFile(id);
+        if (file.exists() && file.lastModified() > lastModifiedTime) {
+            read(); // Reload configuration if the file has been modified
+        }
     }
 
-    public long getDelay() {
-        return minInterval + (long) (Math.random() * (maxInterval - minInterval));
+    // -------------------- Message Generation --------------------
+    private List<String> populateMessages() {
+        List<String> populatedMessages = new ArrayList<>();
+        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
+
+        for (String template : messageTemplates) {
+            populatedMessages.add(template.replaceAll(regex, targetUsername));
+        }
+        return populatedMessages;
     }
 
+    private List<Integer> initializeSelectionCounts(int size) {
+        List<Integer> counts = new ArrayList<>();
+        for (int i = 0; i < size; i++) counts.add(0); // Initialize selection counts
+        return counts;
+    }
 
-    public String populateCommand() {
-        String regex = "(?i)@<User>"; // Case-insensitive regex for <User>
+    public String getMessage(String lastMessage) {
+        if (messages.isEmpty()) return ""; // Fallback if no messages are available
+
+        // Calculate total score and selection probabilities
+        double totalScore = 0;
+        double[] probabilities = new double[messages.size()];
+
+        for (int i = 0; i < messages.size(); i++) {
+            double score = 1.0 / (selectionCounts.get(i) + 1); // Inverse selection count
+            probabilities[i] = score;
+            totalScore += score; // Sum of scores
+        }
+
+        // Normalize probabilities
+        for (int i = 0; i < probabilities.length; i++) {
+            probabilities[i] /= totalScore;
+        }
+
+        // Select a message based on weighted probabilities
+        double randomValue = random.nextDouble();
+        String selectedMessage = messages.get(0); // Fallback message
+        for (int i = 0; i < probabilities.length; i++) {
+            randomValue -= probabilities[i];
+            if (randomValue <= 0) {
+                selectionCounts.set(i, selectionCounts.get(i) + 1); // Increment count
+                selectedMessage = messages.get(i);
+                break;
+            }
+        }
+
+        // Replace <LastMessage> with the last message sent
+        return selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+    }
+
+    public String getCommand() {
+        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
         String modifiedCommand = privateMessageCommand.replaceAll(regex, targetUsername);
         // Remove the leading '/' if it exists
         if (modifiedCommand.startsWith("/")) modifiedCommand = modifiedCommand.substring(1);
         return modifiedCommand;
+    }
+
+//    public long getPreDelay() {
+//        return preMinInterval + (long) (Math.random() * (preMaxInterval - preMinInterval));
+//    }
+
+    public long getPostDelay() {
+        return postMinInterval + (long) (Math.random() * (postMaxInterval - postMinInterval));
+    }
+
+    // -------------------- Utility Methods --------------------
+
+    @Override
+    public String toString() {
+        return "{\n" +
+                "    \"id\": \"" + id + "\",\n" +
+                "    \"targetUsername\": \"" + targetUsername + "\",\n" +
+                "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
+                "    \"command\": \"" + getCommand() + "\",\n" +
+                "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
+                //"    \"preMinInterval\": " + preMinInterval + ",\n" +
+                //"    \"preMaxInterval\": " + preMaxInterval + ",\n" +
+                "    \"postTriggerMessageCount\": " + messageCountTrigger + ",\n" +
+                "    \"postMinInterval\": " + postMinInterval + ",\n" +
+                "    \"postMaxInterval\": " + postMaxInterval + ",\n" +
+                "    \"isRandomized\": " + isRandomized + ",\n" +
+                "    \"messages\": " + (messages != null ? messages.toString() : "null") + ",\n" +
+                "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
+                "}";
     }
 }
