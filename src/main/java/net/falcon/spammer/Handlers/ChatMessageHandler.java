@@ -29,6 +29,7 @@ public class ChatMessageHandler {
 
         registerCustomCommand("!createSpam", SpamManager::create);
         registerCustomCommand("!deleteSpam", SpamManager::delete);
+        registerCustomCommand("!renameSpam", SpamManager::rename);
 
         registerCustomCommand("!runSpam", SpamManager::run);
         registerCustomCommand("!stopSpam", SpamManager::stop);
@@ -60,8 +61,8 @@ public class ChatMessageHandler {
                 return false; // Prevent further processing of the message
             }
 
-            if(message.startsWith("!")) return false;
         }
+        if(message.startsWith("!")) return false;
         return true; // Allow the message to be processed normally if no command matches
     }
 
@@ -136,39 +137,6 @@ public class ChatMessageHandler {
             return future.get();
         } catch (InterruptedException | ExecutionException e) {
             LOGGER.error("Error while waiting for messages: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public static boolean waitForChatTriggers(int messageThreshold, String substring, long delay) {
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-        final int[] messageCount = {0};
-        final boolean[] substringMatched = {false};
-        long startTime = System.currentTimeMillis();
-
-        String lowerCaseSubstring = substring.toLowerCase(); // Convert substring to lowercase
-        if(substring.isEmpty()) substringMatched[0] = true;
-
-
-        ClientReceiveMessageEvents.CHAT.register((messageText, signedMessage, profile, parameters, timestamp) -> {
-            String fullMessage = messageText.getString().toLowerCase(); // Convert message to lowercase
-            String senderName = profile != null ? profile.getName().toLowerCase() : "unknown";
-
-            if(!senderName.equals(MinecraftClient.getInstance().getSession().getUsername().toLowerCase())) ; messageCount[0]++;
-            substringMatched[0] = substringMatched[0] || fullMessage.contains(lowerCaseSubstring) || senderName.contains(lowerCaseSubstring);
-
-            if (messageCount[0] >= messageThreshold && substringMatched[0]) {
-                future.complete(true);
-            }
-        });
-
-        try {
-            boolean result = future.get();
-            long sleepTime = Math.max(0, delay - (System.currentTimeMillis() - startTime));
-            Thread.sleep(sleepTime);
-            return result;
-        } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error("Error while waiting for chat triggers: " + e.getMessage());
             return false;
         }
     }
