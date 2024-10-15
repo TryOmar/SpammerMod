@@ -1,15 +1,16 @@
 package net.falcon.spammer.Managers;
 
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
 
-import java.awt.*;
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static com.mojang.text2speech.Narrator.LOGGER;
 
@@ -22,6 +23,7 @@ public class SpamManager {
                 "!showSpam <ID> - Show the spam config details\n" +
                 "!createSpam <ID> - Create a new spam config file\n" +
                 "!deleteSpam <ID> - Delete the spam config file\n" +
+                "!renameSpam <ID> <newID> - Rename the spam config file\n" +
                 "!runSpam <ID> - Run the spam for the given ID\n" +
                 "!stopSpam <ID> - Stop the spam for the given ID\n" +
                 "!stopSpam - Stop all spam\n" +
@@ -37,8 +39,7 @@ public class SpamManager {
             String message = "File Spam config ID already exists: " + id + "\n";
             ChatMessageHandler.sendSystemMessage(message);
         } else {
-            SpamConfig newConfig = new SpamConfig(id);
-            newConfig.write(); // Save the new config file
+            SpamConfig newConfig = new SpamConfig(id); // Create a new config
             String message = "File created successfully with ID: " + id + "\n";
             ChatMessageHandler.sendSystemMessage(message);
         }
@@ -81,14 +82,33 @@ public class SpamManager {
             ChatMessageHandler.sendSystemMessage(message);
         }
     }
+    // rename id newId
+    public static void rename(String message){
+        if(message.split(" ").length != 2){
+            ChatMessageHandler.sendSystemMessage("Please provide the ID and the new ID\n");
+            return;
+        }
 
-    public static void run(String id){
+        String id = message.split(" ")[0];
+        String newId = message.split(" ")[1];
         if(!SpamConfig.exists(id)){
             ChatMessageHandler.sendSystemMessage("Spam config ID does not exist: " + id + "\n");
             return;
         }
 
-        if(spamStatus.containsKey(id) && spamStatus.get(id)){
+        if(SpamConfig.rename(id, newId))
+            ChatMessageHandler.sendSystemMessage("Spam config ID renamed: " + id + " to " + newId + "\n");
+        else
+            ChatMessageHandler.sendSystemMessage("Error renaming spam config ID: " + id + " to " + newId + "\n");
+    }
+
+    public static void run(String id) {
+        if (!SpamConfig.exists(id)) {
+            ChatMessageHandler.sendSystemMessage("Spam config ID does not exist: " + id + "\n");
+            return;
+        }
+
+        if (spamStatus.containsKey(id) && spamStatus.get(id)) {
             ChatMessageHandler.sendSystemMessage("Spam is already running for ID: " + id + "\n");
             return;
         }
@@ -96,19 +116,19 @@ public class SpamManager {
         runSpam(id);
     }
 
-    public static void stop(String id){
-        if(id.isEmpty()){
+    public static void stop(String id) {
+        if (id.isEmpty()) {
             spamStatus.clear();
             ChatMessageHandler.sendSystemMessage("All spam stopped\n");
             return;
         }
 
-        if(!SpamConfig.exists(id)){
+        if (!SpamConfig.exists(id)) {
             ChatMessageHandler.sendSystemMessage("Spam config ID does not exist: " + id + "\n");
             return;
         }
 
-        if(!spamStatus.containsKey(id) || !spamStatus.get(id)){
+        if (!spamStatus.containsKey(id) || !spamStatus.get(id)) {
             ChatMessageHandler.sendSystemMessage("Spam is not running for ID: " + id + "\n");
             return;
         }
@@ -134,7 +154,7 @@ public class SpamManager {
         MinecraftClient.getInstance().player.sendMessage(message, false);
     }
 
-    public static void test(String numberOfMessages){
+    public static void test(String numberOfMessages) {
         ChatMessageHandler.sendSystemMessage("Test spam function:\n");
     }
 
@@ -162,24 +182,29 @@ public class SpamManager {
                     long updateDelay = updateSpamConfig(config);
 
                     // --- Wait for the triggers ---
-                    long delay = config.getDelay() - updateDelay;
-                    String triggerKeyword = config.triggerKeyword;
-                    int postTriggerMessageCount = config.postTriggerMessageCount;
-                    ChatMessageHandler.waitForChatTriggers(postTriggerMessageCount, triggerKeyword, delay);
+                    String triggerKeyword = config.keywordTrigger;
+                    System.out.println("Trigger Keyword: " + triggerKeyword);
+                    int postTriggerMessageCount = config.messageCountTrigger;
+                    String lastMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
 
                     // --- Check if the spam is stopped ---
-                    if(!spamStatus.getOrDefault(id, false)) break;
+                    if (!spamStatus.getOrDefault(id, false)) break;
+
+                    // --- Wait for the post delay ---
 
                     // --- Send the message ---
-                    String message = config.getMessage();
+                    String message = config.getMessage(lastMessage);
                     boolean isPrivateMessage = config.isPrivateMessage;
-
-                    if(isPrivateMessage){
-                        String command = config.populateCommand();
-                        ChatMessageHandler.sendCommand(command + " " + message);
-                    } else {
-                        ChatMessageHandler.sendChatMessage(message);
-                    }
+                    new Thread(() -> {
+                        long postDelay = config.getPostDelay();
+                        Sleep(postDelay);
+                        if (isPrivateMessage) {
+                            String command = config.getCommand();
+                            ChatMessageHandler.sendCommand(command + " " + message);
+                        } else {
+                            ChatMessageHandler.sendChatMessage(message);
+                        }
+                    }).start();
                 }
             } catch (Exception e) {
                 spamStatus.put(id, false);
@@ -190,7 +215,7 @@ public class SpamManager {
         thread.start();
     }
 
-    public static void Sleep(long duration){
+    public static void Sleep(long duration) {
         try {
             Thread.sleep(duration);
         } catch (InterruptedException e) {
@@ -201,8 +226,59 @@ public class SpamManager {
 
     public static long updateSpamConfig(SpamConfig config) {
         long startTime = System.currentTimeMillis();
-        config.read();
+        config.updateIfNeeded();
         long endTime = System.currentTimeMillis();
         return endTime - startTime;
+    }
+
+    public static String waitForChatTriggers(String id, int messageThreshold, String substring) {
+        if (!spamStatus.getOrDefault(id, false)) {
+            return "";
+        }
+        CompletableFuture<String> future = new CompletableFuture<>();
+        final int[] messageCount = {0};
+        final boolean[] substringMatched = {substring.isEmpty()};
+        long startTime = System.currentTimeMillis();
+
+        String lowerCaseSubstring = substring.toLowerCase();
+
+        ClientReceiveMessageEvents.CHAT.register((messageText, signedMessage, profile, parameters, timestamp) -> {
+            if (!spamStatus.getOrDefault(id, false)) {
+                future.complete("");
+                return;
+            }
+
+            String fullMessage = messageText.getString().toLowerCase();
+            String senderName = profile != null ? profile.getName().toLowerCase() : "unknown";
+            String messageContent = fullMessage.split(senderName)[1].trim();
+//            System.out.println("Message Content After Trim: \"" + messageContent + "\"");
+            messageContent = messageContent.substring(1).trim();
+
+
+//            System.out.println("Message: " + fullMessage);
+//            System.out.println("Message Content: " + messageContent);
+//            System.out.println("Sender: " + senderName);
+//            System.out.println("Our username: " + MinecraftClient.getInstance().getSession().getUsername().toLowerCase());
+//            System.out.println("Is self: " + senderName.equals(MinecraftClient.getInstance().getSession().getUsername().toLowerCase()));
+
+            // Only count messages not sent by the client itself
+            if (!senderName.equals(MinecraftClient.getInstance().getSession().getUsername().toLowerCase())) {
+                messageCount[0]++;
+                substringMatched[0] = substringMatched[0] || fullMessage.contains(lowerCaseSubstring) || senderName.contains(lowerCaseSubstring);
+
+            }
+            System.out.println("\nSubstring to match: " +  substring + "\nSubstring matched: " + substringMatched[0] + " \nMessage count: " + messageCount[0] + "\nLast Message: " + fullMessage);
+            if (messageCount[0] >= messageThreshold && substringMatched[0]) {
+                future.complete(messageContent); // Return the last message instead of true
+            }
+        });
+
+        try {
+            String result = future.get(); // Get the last message
+            return result; // Return the last message
+        } catch (InterruptedException | ExecutionException e) {
+            LOGGER.error("Error while waiting for chat triggers: " + e.getMessage());
+            return ""; // Return an empty string on error
+        }
     }
 }
