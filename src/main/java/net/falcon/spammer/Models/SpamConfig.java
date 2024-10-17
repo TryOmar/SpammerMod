@@ -23,18 +23,16 @@ public class SpamConfig {
     //private long preMaxInterval = 6000;
 
     public String keywordTrigger = "hi";
-    public int messageCountTrigger = 2;
+    public int messageCountTrigger = 1;
 
     private long postMinInterval = 3000;
     private long postMaxInterval = 6000;
 
     private boolean isRandomized = true;
     private String[] messageTemplates = {
-            "Hello man, how are you @<User>? last message was: <LastMessage>",
-            "What's up @<User>? last message was: <LastMessage>",
-            "How's everything going @<User>? last message was: <LastMessage>",
-            "Just checking in @<User>, hope all is good! last message was: <LastMessage>",
-
+            "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>",
+            "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>",
+            "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>"
     };
 
     private transient long lastModifiedTime = System.currentTimeMillis();
@@ -161,7 +159,10 @@ public class SpamConfig {
         return counts;
     }
 
-    public String getMessage(String lastMessage) {
+    public String getMessage(String lastFullMessage) {
+        String lastUser = lastFullMessage.split(":")[0];
+        String lastMessage = lastFullMessage.substring(lastUser.length() + 1).trim();
+
         if (messages.isEmpty()) return ""; // Fallback if no messages are available
 
         // Calculate total score and selection probabilities
@@ -191,14 +192,16 @@ public class SpamConfig {
             }
         }
 
-        // Replace <LastMessage> with the last message sent
-        return selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+        selectedMessage = selectedMessage.replaceAll("(?i)<User>", targetUsername);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+        return selectedMessage;
     }
 
-    public String getCommand() {
-        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
-        String modifiedCommand = privateMessageCommand.replaceAll(regex, targetUsername);
-        // Remove the leading '/' if it exists
+    public String getCommand(String lastFullMessage) {
+        String lastUser = lastFullMessage.split(":")[0];
+        String modifiedCommand = privateMessageCommand.replaceAll("(?i)<User>", targetUsername);
+        modifiedCommand = modifiedCommand.replaceAll("(?i)<LastUser>", lastUser);
         if (modifiedCommand.startsWith("/")) modifiedCommand = modifiedCommand.substring(1);
         return modifiedCommand;
     }
@@ -219,7 +222,7 @@ public class SpamConfig {
                 "    \"id\": \"" + id + "\",\n" +
                 "    \"targetUsername\": \"" + targetUsername + "\",\n" +
                 "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
-                "    \"command\": \"" + getCommand() + "\",\n" +
+                "    \"command\": \"" + getCommand("") + "\",\n" +
                 "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
                 //"    \"preMinInterval\": " + preMinInterval + ",\n" +
                 //"    \"preMaxInterval\": " + preMaxInterval + ",\n" +

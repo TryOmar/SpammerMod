@@ -161,6 +161,15 @@ public class SpamManager {
 
     // ----------------------------- Spam Functions -----------------------------
     public static void runSpam(String id) {
+        if(!SpamConfig.exists(id)){
+            ChatMessageHandler.sendSystemMessage("Spam config ID does not exist: " + id + "\n");
+            return;
+        }
+
+        if(spamStatus.containsKey(id) && spamStatus.get(id)){
+            ChatMessageHandler.sendSystemMessage("Spam is already running for ID: " + id + "\n");
+            return;
+        }
         // say running then sya starts in 3 2 1 then start spamming
         ChatMessageHandler.sendSystemMessage("Running spam for ID: " + id + "\n");
         ChatMessageHandler.sendSystemMessage("Spam starts in 3\n");
@@ -185,7 +194,7 @@ public class SpamManager {
                     String triggerKeyword = config.keywordTrigger;
                     System.out.println("Trigger Keyword: " + triggerKeyword);
                     int postTriggerMessageCount = config.messageCountTrigger;
-                    String lastMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
+                    String lastFullMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
 
                     // --- Check if the spam is stopped ---
                     if (!spamStatus.getOrDefault(id, false)) break;
@@ -193,13 +202,14 @@ public class SpamManager {
                     // --- Wait for the post delay ---
 
                     // --- Send the message ---
-                    String message = config.getMessage(lastMessage);
+                    String message = config.getMessage(lastFullMessage);
                     boolean isPrivateMessage = config.isPrivateMessage;
                     new Thread(() -> {
+                        // send teh thread id
                         long postDelay = config.getPostDelay();
                         Sleep(postDelay);
                         if (isPrivateMessage) {
-                            String command = config.getCommand();
+                            String command = config.getCommand(lastFullMessage);
                             ChatMessageHandler.sendCommand(command + " " + message);
                         } else {
                             ChatMessageHandler.sendChatMessage(message);
@@ -255,6 +265,10 @@ public class SpamManager {
             messageContent = messageContent.substring(1).trim();
 
 
+            // Construct a new message with Sender: Message
+            String newFormMessage = senderName + ": " + messageContent;
+
+
 //            System.out.println("Message: " + fullMessage);
 //            System.out.println("Message Content: " + messageContent);
 //            System.out.println("Sender: " + senderName);
@@ -269,7 +283,7 @@ public class SpamManager {
             }
             System.out.println("\nSubstring to match: " +  substring + "\nSubstring matched: " + substringMatched[0] + " \nMessage count: " + messageCount[0] + "\nLast Message: " + fullMessage);
             if (messageCount[0] >= messageThreshold && substringMatched[0]) {
-                future.complete(messageContent); // Return the last message instead of true
+                future.complete(newFormMessage); // Return the last message instead of true
             }
         });
 
