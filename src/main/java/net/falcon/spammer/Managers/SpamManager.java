@@ -3,6 +3,7 @@ package net.falcon.spammer.Managers;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
+import net.falcon.spammer.Utils.PatternMatcher;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
@@ -193,7 +194,7 @@ public class SpamManager {
                     // --- Wait for the triggers ---
                     String triggerKeyword = config.keywordTrigger;
                     System.out.println("Trigger Keyword: " + triggerKeyword);
-                    int postTriggerMessageCount = config.messageCountTrigger;
+                    int postTriggerMessageCount = config.getMessageCountTrigger();
                     String lastFullMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
 
                     // --- Check if the spam is stopped ---
@@ -260,9 +261,12 @@ public class SpamManager {
 
             String fullMessage = messageText.getString().toLowerCase();
             String senderName = profile != null ? profile.getName().toLowerCase() : "unknown";
-            String messageContent = fullMessage.split(senderName)[1].trim();
-//            System.out.println("Message Content After Trim: \"" + messageContent + "\"");
-            messageContent = messageContent.substring(1).trim();
+            String messageContent;
+            if(fullMessage.contains("»"))
+                messageContent = fullMessage.split("»")[1].trim();
+            else
+                messageContent = fullMessage.split(senderName)[1].trim().substring(1).trim();
+
 
 
             // Construct a new message with Sender: Message
@@ -278,9 +282,10 @@ public class SpamManager {
             // Only count messages not sent by the client itself
             if (!senderName.equals(MinecraftClient.getInstance().getSession().getUsername().toLowerCase())) {
                 messageCount[0]++;
-                substringMatched[0] = substringMatched[0] || fullMessage.contains(lowerCaseSubstring) || senderName.contains(lowerCaseSubstring);
-
+                //substringMatched[0] = substringMatched[0] || fullMessage.contains(lowerCaseSubstring) || senderName.contains(lowerCaseSubstring);
+                substringMatched[0] = PatternMatcher.evaluatePattern(fullMessage, substring);
             }
+
             System.out.println("\nSubstring to match: " +  substring + "\nSubstring matched: " + substringMatched[0] + " \nMessage count: " + messageCount[0] + "\nLast Message: " + fullMessage);
             if (messageCount[0] >= messageThreshold && substringMatched[0]) {
                 future.complete(newFormMessage); // Return the last message instead of true
