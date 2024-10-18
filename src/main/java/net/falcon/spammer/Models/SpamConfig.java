@@ -2,6 +2,7 @@ package net.falcon.spammer.Models;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.falcon.spammer.Utils.ShuffledWords;
 import net.minecraft.client.MinecraftClient;
 
 import java.io.*;
@@ -23,16 +24,16 @@ public class SpamConfig {
     //private long preMaxInterval = 6000;
 
     public String keywordTrigger = "hi";
-    public int messageCountTrigger = 1;
+    private int minMessageCountTrigger = 1;
+    private int maxMessageCountTrigger = 1;
 
-    private long postMinInterval = 3000;
-    private long postMaxInterval = 6000;
+    private long postMinIntervalInSeconds = 3; // In seconds
+    private long postMaxIntervalInSeconds = 6; // In seconds
 
-    private boolean isRandomized = true;
     private String[] messageTemplates = {
-            "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>",
-            "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>",
-            "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>"
+            "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
+            "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
+            "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
     };
 
     private transient long lastModifiedTime = System.currentTimeMillis();
@@ -116,12 +117,12 @@ public class SpamConfig {
                 //this.preMaxInterval = loaded.preMaxInterval;
 
                 this.keywordTrigger = loaded.keywordTrigger;
-                this.messageCountTrigger = loaded.messageCountTrigger;
+                this.minMessageCountTrigger = loaded.minMessageCountTrigger;
+                this.maxMessageCountTrigger = loaded.maxMessageCountTrigger;
 
-                this.postMinInterval = loaded.postMinInterval;
-                this.postMaxInterval = loaded.postMaxInterval;
+                this.postMinIntervalInSeconds = loaded.postMinIntervalInSeconds;
+                this.postMaxIntervalInSeconds = loaded.postMaxIntervalInSeconds;
 
-                this.isRandomized = loaded.isRandomized;
                 this.messageTemplates = loaded.messageTemplates;
                 this.lastModifiedTime = file.lastModified();
                 if(messages == null || messages.isEmpty() || selectionCounts == null || selectionCounts.isEmpty() || messages != populateMessages()){
@@ -192,9 +193,13 @@ public class SpamConfig {
             }
         }
 
+        // Users
         selectedMessage = selectedMessage.replaceAll("(?i)<User>", targetUsername);
         selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
+
+        // Messages
         selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", ShuffledWords.getLastShuffledWords(lastMessage));
         return selectedMessage;
     }
 
@@ -211,7 +216,13 @@ public class SpamConfig {
 //    }
 
     public long getPostDelay() {
-        return postMinInterval + (long) (Math.random() * (postMaxInterval - postMinInterval));
+        long minInterval = postMinIntervalInSeconds * 1000; // Convert to milliseconds
+        long maxInterval = postMaxIntervalInSeconds * 1000; // Convert to milliseconds
+        return minInterval + (long) (Math.random() * (maxInterval - minInterval));
+    }
+
+    public int getMessageCountTrigger() {
+        return minMessageCountTrigger + random.nextInt(maxMessageCountTrigger - minMessageCountTrigger + 1);
     }
 
     // -------------------- Utility Methods --------------------
@@ -226,10 +237,11 @@ public class SpamConfig {
                 "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
                 //"    \"preMinInterval\": " + preMinInterval + ",\n" +
                 //"    \"preMaxInterval\": " + preMaxInterval + ",\n" +
-                "    \"postTriggerMessageCount\": " + messageCountTrigger + ",\n" +
-                "    \"postMinInterval\": " + postMinInterval + ",\n" +
-                "    \"postMaxInterval\": " + postMaxInterval + ",\n" +
-                "    \"isRandomized\": " + isRandomized + ",\n" +
+                //"    \"postTriggerMessageCount\": " + messageCountTrigger + ",\n" +
+                "    \"minMessageCountTrigger\": " + minMessageCountTrigger + ",\n" +
+                "    \"maxMessageCountTrigger\": " + maxMessageCountTrigger + ",\n" +
+                "    \"postMinIntervalInSeconds\": " + postMinIntervalInSeconds + ",\n" +
+                "    \"postMaxIntervalInSeconds\": " + postMaxIntervalInSeconds + ",\n" +
                 "    \"messages\": " + (messages != null ? messages.toString() : "null") + ",\n" +
                 "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
                 "}";
