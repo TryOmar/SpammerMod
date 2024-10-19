@@ -3,6 +3,7 @@ package net.falcon.spammer.Managers;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
+import net.falcon.spammer.Utils.MessageParser;
 import net.falcon.spammer.Utils.PatternMatcher;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.*;
@@ -271,13 +272,8 @@ public class SpamManager {
         }
         // say running then sya starts in 3 2 1 then start spamming
         ChatMessageHandler.sendSystemMessage("Running spam for ID: " + id + "\n");
-        ChatMessageHandler.sendSystemMessage("Spam starts in 3\n");
-        Sleep(1000);
-        ChatMessageHandler.sendSystemMessage("Spam starts in 2\n");
-        Sleep(1000);
-        ChatMessageHandler.sendSystemMessage("Spam starts in 1\n");
-        Sleep(1000);
-        ChatMessageHandler.sendSystemMessage("Spam started\n");
+        Sleep(200);
+        ChatMessageHandler.sendSystemMessage("Spam started!");
 
 
         spamStatus.put(id, true);
@@ -285,33 +281,49 @@ public class SpamManager {
 
         Thread thread = new Thread(() -> {
             try {
-                while (spamStatus.getOrDefault(id, false)) {
+
+                long count = config.getTotalLoopMessagesCount();
+                for(long i = 0; i < count && i < config.maxTotalLoopMessagesCount; i++) {
+                    // --- Check if the spam is stopped ---
+                    if(!spamStatus.getOrDefault(id, false)) break;
                     // --- Update the config ---
                     long updateDelay = updateSpamConfig(config);
 
                     // --- Wait for the triggers ---
                     String triggerKeyword = config.keywordTrigger;
                     //System.out.println("Trigger Keyword: " + triggerKeyword);
-                    int postTriggerMessageCount = config.getMessageCountTrigger();
+                    long postTriggerMessageCount = config.getMessageCountTrigger();
                     String lastFullMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
 
                     // --- Check if the spam is stopped ---
                     if (!spamStatus.getOrDefault(id, false)) break;
 
-                    // --- Wait for the post delay ---
+                    // --- Wait for the loop delay ---
+                    long loopDelay = config.getLoopDelay();
+                    Sleep(loopDelay);
+
 
                     // --- Send the message ---
                     String message = config.getMessage(lastFullMessage);
                     boolean isPrivateMessage = config.isPrivateMessage;
+                    final long finalI = i;
                     new Thread(() -> {
                         // send teh thread id
-                        long postDelay = config.getPostDelay();
+                        long postDelay = config.getPostTriggerDelay();
                         Sleep(postDelay);
+                        if(!spamStatus.getOrDefault(id, false)) return;
                         if (isPrivateMessage) {
                             String command = config.getCommand(lastFullMessage);
                             ChatMessageHandler.sendCommand(command + " " + message);
                         } else {
                             ChatMessageHandler.sendChatMessage(message);
+                        }
+
+                        // --- If it was the last message, stop the spam ---
+                        if(finalI == count - 1) {
+                            spamStatus.put(id, false);
+                            Sleep(200);
+                            ChatMessageHandler.sendSystemMessage("Spam finished for ID: " + id + "\n");
                         }
                     }).start();
                 }
@@ -325,6 +337,8 @@ public class SpamManager {
     }
 
     public static void Sleep(long duration) {
+        LOGGER.info("Sleeping for " + duration + "ms");
+        if(duration <= 0) return;
         try {
             Thread.sleep(duration);
         } catch (InterruptedException e) {
@@ -340,13 +354,13 @@ public class SpamManager {
         return endTime - startTime;
     }
 
-    public static String waitForChatTriggers(String id, int messageThreshold, String substring) {
-        if(messageThreshold == 0 && substring.isEmpty()) return "";
+    public static String waitForChatTriggers(String id, long messageThreshold, String substring) {
+        if(messageThreshold == 0 && substring.isEmpty()) return ChatMessageHandler.LastFullMessage;
         if (!spamStatus.getOrDefault(id, false)) {
             return "";
         }
         CompletableFuture<String> future = new CompletableFuture<>();
-        final int[] messageCount = {0};
+        final long[] messageCount = {0};
         final boolean[] substringMatched = {substring.isEmpty()};
         long startTime = System.currentTimeMillis();
 
@@ -360,11 +374,7 @@ public class SpamManager {
 
             String fullMessage = messageText.getString().toLowerCase();
             String senderName = profile != null ? profile.getName().toLowerCase() : "unknown";
-            String messageContent;
-            if(fullMessage.contains("»"))
-                messageContent = fullMessage.split("»")[1].trim();
-            else
-                messageContent = fullMessage.split(senderName)[1].trim().substring(1).trim();
+            String messageContent = MessageParser.parseMessage(fullMessage)[1];
 
 
 
