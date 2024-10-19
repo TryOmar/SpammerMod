@@ -9,6 +9,7 @@ import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -28,7 +29,9 @@ public class SpamManager {
                 "!runSpam <ID> - Run the spam for the given ID\n" +
                 "!stopSpam <ID> - Stop the spam for the given ID\n" +
                 "!stopSpam - Stop all spam\n" +
-                "!folderSpam - Open the spam folder\n";
+                "!folderSpam - Open the spam folder\n" +
+                "!scanChat <name> - Scan the chat for the given name\n" +
+                "!scanClear - Clear the scan result file\n";
 
         ChatMessageHandler.sendSystemMessage(helpMessage);
 
@@ -37,12 +40,55 @@ public class SpamManager {
     public static void create(String id) {
         if (SpamConfig.exists(id)) {
             // Send message to chat that the file already exists
-            String message = "File Spam config ID already exists: " + id + "\n";
+            String message = "File Spam config ID already exists: " + id;
             ChatMessageHandler.sendSystemMessage(message);
         } else {
-            SpamConfig newConfig = new SpamConfig(id); // Create a new config
-            String message = "File created successfully with ID: " + id + "\n";
-            ChatMessageHandler.sendSystemMessage(message);
+            // Create a new config
+            SpamConfig newConfig = new SpamConfig(id);
+
+            // Build the message indicating success
+            String successMessage = "File created successfully with ID: " + id;
+            ChatMessageHandler.sendSystemMessage(successMessage);
+
+            // Create the directory structure if it doesn't exist
+            File userDir = new File("Spam", SpamConfig.getUsername());
+            if (!userDir.exists()) userDir.mkdirs();
+
+            // Specify the config file path directly in the user's directory
+            File configFile = new File(userDir, id + ".json"); // Save config files directly in the user's folder
+
+            // Ensure the file is created (optional, based on your implementation of SpamConfig)
+            try {
+                if (configFile.createNewFile()) {
+                    // Successfully created the file
+                }
+            } catch (IOException e) {
+                LOGGER.warn("Failed to create the config file: " + e.getMessage());
+            }
+
+            // Build the message for the Spam chat folder
+            String folderPath = userDir.getAbsolutePath();
+            MutableText folderMessage = Text.literal("Click here to open the Spam chat folder: ")
+                    .append(
+                            Text.literal("[Spam Chat Folder]")
+                                    .styled(style -> style.withColor(Formatting.AQUA)
+                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, folderPath))
+                                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Open Spam chat folder"))))
+                    );
+
+            // Build the message for the new config file
+            String configFilePath = configFile.getAbsolutePath();
+            MutableText fileMessage = Text.literal("Click here to open the config file: ")
+                    .append(
+                            Text.literal("[" + configFile.getName() + "]")
+                                    .styled(style -> style.withColor(Formatting.AQUA)
+                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, configFilePath))
+                                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Open config file"))))
+                    );
+
+            // Send both messages to the player
+            MinecraftClient.getInstance().player.sendMessage(folderMessage, false);
+            MinecraftClient.getInstance().player.sendMessage(fileMessage, false);
         }
     }
 
@@ -56,18 +102,18 @@ public class SpamManager {
             StringBuilder runningConfigs = new StringBuilder();
             StringBuilder notRunningConfigs = new StringBuilder();
 
-            for (String configId : SpamConfig.getAllIds()) {
-                if (spamStatus.getOrDefault(configId, false)) {
-                    runningConfigs.append(configId).append(", ");
+            for (SpamConfig config : SpamConfig.getAllIds()) {
+                if (spamStatus.getOrDefault(config.id, false)) {
+                    runningConfigs.append(config.id+" - " + config.targetUsername).append("\n ");
                 } else {
-                    notRunningConfigs.append(configId).append(", ");
+                    notRunningConfigs.append(config.id+" - "+config.targetUsername).append("\n ");
                 }
             }
 
             String message = "File Spam config ID does not exist: " + id + "\n" +
                     "Available IDs:\n" +
-                    "Running: " + runningConfigs.toString() + "\n" +
-                    "Not Running: " + notRunningConfigs.toString() + "\n";
+                    "Running:\n " + runningConfigs.toString() + "\n" +
+                    "Not Running:\n " + notRunningConfigs.toString() + "\n";
 
             ChatMessageHandler.sendSystemMessage(message);
         }
@@ -155,6 +201,58 @@ public class SpamManager {
         MinecraftClient.getInstance().player.sendMessage(message, false);
     }
 
+
+    public static void scanName(String name) {
+        List<String> fileNames = new ArrayList<>();
+        fileNames.add(Chatting.ALL_GENERAL_MESSAGES);
+        fileNames.add(Chatting.ALL_PRIVATE_MESSAGES);
+        Chatting.scanResult(fileNames, name);
+
+        // Create the directory structure if it doesn't exist
+        File userDir = new File("Spam", SpamConfig.getUsername());
+        if (!userDir.exists()) userDir.mkdirs();
+
+        File chatDir = new File(userDir, "Chat");
+        if (!chatDir.exists()) chatDir.mkdirs();
+
+        // Specify the file to open (ScanResult.txt)
+        File resultFile = new File(chatDir, Chatting.SCAN_RESULT);
+
+        // Build the message for the Spam chat folder
+        String folderPath = chatDir.getAbsolutePath();
+        MutableText folderMessage = Text.literal("Click here to open the Spam chat folder: ")
+                .append(
+                        Text.literal("[Spam Chat Folder]")
+                                .styled(style -> style.withColor(Formatting.AQUA)
+                                        .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, folderPath))
+                                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Open Spam chat folder"))))
+                );
+
+        // Build the message for the Scan Result file
+        MutableText fileMessage;
+        if (resultFile.exists()) {
+            String filePath = resultFile.getAbsolutePath();
+            fileMessage = Text.literal("Click here to open the Scan Result file: ")
+                    .append(
+                            Text.literal("[" + Chatting.SCAN_RESULT + "]")
+                                    .styled(style -> style.withColor(Formatting.AQUA)
+                                            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, filePath))
+                                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Open Scan Result file"))))
+                    );
+        } else {
+            fileMessage = Text.literal("Scan Result file not found.");
+        }
+
+        // Send both messages to the player
+        MinecraftClient.getInstance().player.sendMessage(folderMessage, false);
+        MinecraftClient.getInstance().player.sendMessage(fileMessage, false);
+    }
+
+    public static void scanClear(String name) {
+        Chatting.clearFile(Chatting.SCAN_RESULT);
+        ChatMessageHandler.sendSystemMessage("Scan result file cleared\n");
+    }
+
     public static void test(String numberOfMessages) {
         ChatMessageHandler.sendSystemMessage("Test spam function:\n");
     }
@@ -193,7 +291,7 @@ public class SpamManager {
 
                     // --- Wait for the triggers ---
                     String triggerKeyword = config.keywordTrigger;
-                    System.out.println("Trigger Keyword: " + triggerKeyword);
+                    //System.out.println("Trigger Keyword: " + triggerKeyword);
                     int postTriggerMessageCount = config.getMessageCountTrigger();
                     String lastFullMessage = waitForChatTriggers(config.id, postTriggerMessageCount, triggerKeyword);
 
@@ -286,7 +384,7 @@ public class SpamManager {
                 substringMatched[0] = PatternMatcher.evaluatePattern(fullMessage, substring);
             }
 
-            System.out.println("\nSubstring to match: " +  substring + "\nSubstring matched: " + substringMatched[0] + " \nMessage count: " + messageCount[0] + "\nLast Message: " + fullMessage);
+            //System.out.println("\nSubstring to match: " +  substring + "\nSubstring matched: " + substringMatched[0] + " \nMessage count: " + messageCount[0] + "\nLast Message: " + fullMessage);
             if (messageCount[0] >= messageThreshold && substringMatched[0]) {
                 future.complete(newFormMessage); // Return the last message instead of true
             }
@@ -300,4 +398,5 @@ public class SpamManager {
             return ""; // Return an empty string on error
         }
     }
+
 }
