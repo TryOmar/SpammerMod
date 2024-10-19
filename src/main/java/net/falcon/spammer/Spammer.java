@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 public class Spammer implements ModInitializer {
 	public static final String MOD_ID = "spammer";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	private static boolean CHAT_EVENTS_LOADED = false;
 
 	@Override
 	public void onInitialize() {
@@ -23,7 +24,10 @@ public class Spammer implements ModInitializer {
 		ClientPlayConnectionEvents.INIT.register((ClientPlayNetworkHandler handler, MinecraftClient client) -> {
 			Debugging.Spam("Client connected to server: " + handler.getConnection().getAddress());
 			// Load chat events
-			ChatMessageHandler.loadChatEvents();
+			if(!CHAT_EVENTS_LOADED) {
+				ChatMessageHandler.loadChatEvents();
+				CHAT_EVENTS_LOADED = true;
+			}
 			// Load all custom commands
 			ChatMessageHandler.loadAllCustomCommands();
 		});
