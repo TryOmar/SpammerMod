@@ -2,6 +2,7 @@ package net.falcon.spammer.Models;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.falcon.spammer.Utils.MessageParser;
 import net.falcon.spammer.Utils.ShuffledWords;
 import net.minecraft.client.MinecraftClient;
 
@@ -24,11 +25,17 @@ public class SpamConfig {
     //private long preMaxInterval = 6000;
 
     public String keywordTrigger = "hi|hey&!bye";
-    private int minMessageCountTrigger = 1;
-    private int maxMessageCountTrigger = 1;
+    private long minMessageCountTrigger = 1;
+    private long maxMessageCountTrigger = 1;
 
-    private long postMinIntervalInSeconds = 3; // In seconds
-    private long postMaxIntervalInSeconds = 6; // In seconds
+    private long postTriggerMinIntervalInSeconds = 3; // In seconds
+    private long postTriggerMaxIntervalInSeconds = 6; // In seconds
+
+    private long minLoopIntervalInMilliseconds = 100;
+    private long maxLoopIntervalInMilliseconds = 500;
+
+    private long minTotalLoopMessagesCount = 5;
+    public long maxTotalLoopMessagesCount = 10;
 
     private String[] messageTemplates = {
             "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
@@ -123,8 +130,14 @@ public class SpamConfig {
                 this.minMessageCountTrigger = loaded.minMessageCountTrigger;
                 this.maxMessageCountTrigger = loaded.maxMessageCountTrigger;
 
-                this.postMinIntervalInSeconds = loaded.postMinIntervalInSeconds;
-                this.postMaxIntervalInSeconds = loaded.postMaxIntervalInSeconds;
+                this.postTriggerMinIntervalInSeconds = loaded.postTriggerMinIntervalInSeconds;
+                this.postTriggerMaxIntervalInSeconds = loaded.postTriggerMaxIntervalInSeconds;
+
+                this.minLoopIntervalInMilliseconds = loaded.minLoopIntervalInMilliseconds;
+                this.maxLoopIntervalInMilliseconds = loaded.maxLoopIntervalInMilliseconds;
+
+                this.minTotalLoopMessagesCount = loaded.minTotalLoopMessagesCount;
+                this.maxTotalLoopMessagesCount = loaded.maxTotalLoopMessagesCount;
 
                 this.messageTemplates = loaded.messageTemplates;
                 this.lastModifiedTime = file.lastModified();
@@ -164,8 +177,16 @@ public class SpamConfig {
     }
 
     public String getMessage(String lastFullMessage) {
-        String lastUser = lastFullMessage.split(":")[0];
-        String lastMessage = lastFullMessage.substring(Math.min(lastFullMessage.length(), lastUser.length() + 1)).trim();
+        // Split the lastFullMessage based on the last occurrence of " » " to separate the user from the status
+        String[] parts = MessageParser.parseMessage(lastFullMessage);
+
+        // Extract the user part from the first part of the split
+        String lastUser = parts[0]; // Get the last word (username)
+        String lastMessage = parts[1]; // The second part contains the message or status
+
+        System.out.println("Last full message: " + lastFullMessage);
+        System.out.println("Last message: " + lastMessage);
+        System.out.println("Last user: " + lastUser);
 
         if (messages.isEmpty()) return ""; // Fallback if no messages are available
 
@@ -218,14 +239,23 @@ public class SpamConfig {
 //        return preMinInterval + (long) (Math.random() * (preMaxInterval - preMinInterval));
 //    }
 
-    public long getPostDelay() {
-        long minInterval = postMinIntervalInSeconds * 1000; // Convert to milliseconds
-        long maxInterval = postMaxIntervalInSeconds * 1000; // Convert to milliseconds
+    public long getPostTriggerDelay() {
+        long minInterval = postTriggerMinIntervalInSeconds * 1000; // Convert to milliseconds
+        long maxInterval = postTriggerMaxIntervalInSeconds * 1000; // Convert to milliseconds
         return minInterval + (long) (Math.random() * (maxInterval - minInterval));
     }
 
-    public int getMessageCountTrigger() {
-        return minMessageCountTrigger + random.nextInt(maxMessageCountTrigger - minMessageCountTrigger + 1);
+    public long getLoopDelay() {
+        return minLoopIntervalInMilliseconds + (long) (Math.random() * (maxLoopIntervalInMilliseconds - minLoopIntervalInMilliseconds));
+    }
+
+
+    public long getMessageCountTrigger() {
+        return minMessageCountTrigger + (long) (Math.random() * (maxMessageCountTrigger - minMessageCountTrigger));
+    }
+
+    public long getTotalLoopMessagesCount() {
+        return minTotalLoopMessagesCount + (long) (Math.random() * (maxTotalLoopMessagesCount - minTotalLoopMessagesCount));
     }
 
     // -------------------- Utility Methods --------------------
@@ -243,8 +273,12 @@ public class SpamConfig {
                 //"    \"postTriggerMessageCount\": " + messageCountTrigger + ",\n" +
                 "    \"minMessageCountTrigger\": " + minMessageCountTrigger + ",\n" +
                 "    \"maxMessageCountTrigger\": " + maxMessageCountTrigger + ",\n" +
-                "    \"postMinIntervalInSeconds\": " + postMinIntervalInSeconds + ",\n" +
-                "    \"postMaxIntervalInSeconds\": " + postMaxIntervalInSeconds + ",\n" +
+                "    \"postTriggerMinIntervalInSeconds\": " + postTriggerMinIntervalInSeconds + ",\n" +
+                "    \"postTriggerMaxIntervalInSeconds\": " + postTriggerMaxIntervalInSeconds + ",\n" +
+                "    \"minLoopIntervalInMilliseconds\": " + minLoopIntervalInMilliseconds + ",\n" +
+                "    \"maxLoopIntervalInMilliseconds\": " + maxLoopIntervalInMilliseconds + ",\n" +
+                "    \"minTotalLoopMessagesCount\": " + minTotalLoopMessagesCount + ",\n" +
+                "    \"maxTotalLoopMessagesCount\": " + maxTotalLoopMessagesCount + ",\n" +
                 "    \"messages\": " + (messages != null ? messages.toString() : "null") + ",\n" +
                 "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
                 "}";
