@@ -3,12 +3,14 @@ package net.falcon.spammer.Models;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.falcon.spammer.Utils.MessageParser;
+import net.falcon.spammer.Utils.OnlinePlayers;
 import net.falcon.spammer.Utils.ShuffledWords;
 import net.minecraft.client.MinecraftClient;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -38,14 +40,15 @@ public class SpamConfig {
     public long maxTotalLoopMessagesCount = 10;
 
     private String[] messageTemplates = {
-            "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
-            "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
-            "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>",
+            "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
+            "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
+            "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
     };
 
     private transient long lastModifiedTime = System.currentTimeMillis();
-    private transient List<String> messages;
+    //private transient List<String> messages;
     private transient List<Integer> selectionCounts;
+    private transient OnlinePlayers onlinePlayers = new OnlinePlayers();
     private transient Random random = new Random(); // Initialize random
 
     // -------------------- Constructor and Static Methods --------------------
@@ -106,8 +109,8 @@ public class SpamConfig {
             try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
                 GSON.toJson(this, writer);
                 lastModifiedTime = file.lastModified();
-                this.messages = populateMessages(); // Store the populated messages
-                this.selectionCounts = initializeSelectionCounts(this.messages.size()); // Initialize selection counts
+                //this.messages = populateMessages(); // Store the populated messages
+                this.selectionCounts = initializeSelectionCounts(messageTemplates.length); // Initialize selection counts
                 System.out.println("Spam configuration created at: " + file.getPath());
             } catch (IOException e) {
                 e.printStackTrace();
@@ -141,9 +144,8 @@ public class SpamConfig {
 
                 this.messageTemplates = loaded.messageTemplates;
                 this.lastModifiedTime = file.lastModified();
-                if(messages == null || messages.isEmpty() || selectionCounts == null || selectionCounts.isEmpty() || messages != populateMessages()){
-                    this.messages = populateMessages(); // Store the populated messages
-                    this.selectionCounts = initializeSelectionCounts(this.messages.size()); // Initialize selection counts
+                if( selectionCounts == null || selectionCounts.isEmpty() || selectionCounts.size() != messageTemplates.length) {
+                    this.selectionCounts = initializeSelectionCounts(messageTemplates.length); // Initialize selection counts
                 }
                 System.out.println("Spam configuration loaded from file: " + file.getPath());
             }
@@ -160,15 +162,15 @@ public class SpamConfig {
     }
 
     // -------------------- Message Generation --------------------
-    private List<String> populateMessages() {
-        List<String> populatedMessages = new ArrayList<>();
-        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
-
-        for (String template : messageTemplates) {
-            populatedMessages.add(template.replaceAll(regex, targetUsername));
-        }
-        return populatedMessages;
-    }
+//    private List<String> populateMessages() {
+//        List<String> populatedMessages = new ArrayList<>();
+//        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
+//
+//        for (String template : messageTemplates) {
+//            populatedMessages.add(template.replaceAll(regex, targetUsername));
+//        }
+//        return populatedMessages;
+//    }
 
     private List<Integer> initializeSelectionCounts(int size) {
         List<Integer> counts = new ArrayList<>();
@@ -176,25 +178,14 @@ public class SpamConfig {
         return counts;
     }
 
-    public String getMessage(String lastFullMessage) {
-        // Split the lastFullMessage based on the last occurrence of " » " to separate the user from the status
-        String[] parts = MessageParser.parseMessage(lastFullMessage);
-
-        // Extract the user part from the first part of the split
-        String lastUser = parts[0]; // Get the last word (username)
-        String lastMessage = parts[1]; // The second part contains the message or status
-
-        System.out.println("Last full message: " + lastFullMessage);
-        System.out.println("Last message: " + lastMessage);
-        System.out.println("Last user: " + lastUser);
-
-        if (messages.isEmpty()) return ""; // Fallback if no messages are available
+    private String getRandomMessage() {
+        if (messageTemplates.length == 0) return ""; // Fallback if no messages are available
 
         // Calculate total score and selection probabilities
         double totalScore = 0;
-        double[] probabilities = new double[messages.size()];
+        double[] probabilities = new double[messageTemplates.length];
 
-        for (int i = 0; i < messages.size(); i++) {
+        for (int i = 0; i < messageTemplates.length; i++) {
             double score = 1.0 / (selectionCounts.get(i) + 1); // Inverse selection count
             probabilities[i] = score;
             totalScore += score; // Sum of scores
@@ -207,32 +198,68 @@ public class SpamConfig {
 
         // Select a message based on weighted probabilities
         double randomValue = random.nextDouble();
-        String selectedMessage = messages.get(0); // Fallback message
+        String selectedMessage = messageTemplates[0]; // Fallback message
         for (int i = 0; i < probabilities.length; i++) {
             randomValue -= probabilities[i];
             if (randomValue <= 0) {
                 selectionCounts.set(i, selectionCounts.get(i) + 1); // Increment count
-                selectedMessage = messages.get(i);
+                selectedMessage = messageTemplates[i];
                 break;
             }
         }
 
-        // Users
-        selectedMessage = selectedMessage.replaceAll("(?i)<User>", targetUsername);
-        selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
-
-        // Messages
-        selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
-        selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", ShuffledWords.getLastShuffledWords(lastMessage));
         return selectedMessage;
     }
 
-    public String getCommand(String lastFullMessage) {
-        String lastUser = MessageParser.parseMessage(lastFullMessage)[0];
-        String modifiedCommand = privateMessageCommand.replaceAll("(?i)<User>", targetUsername);
-        modifiedCommand = modifiedCommand.replaceAll("(?i)<LastUser>", lastUser);
-        if (modifiedCommand.startsWith("/")) modifiedCommand = modifiedCommand.substring(1);
-        return modifiedCommand;
+    public String getMessage(String lastFullMessage) {
+        String selectedMessage = getRandomMessage();
+        String[] parts = MessageParser.parseMessage(lastFullMessage);
+
+        // Users
+        String user = targetUsername;
+        String lastUser = parts[0]; // Get the last word (username)
+        String onlinePlayer = onlinePlayers.getOnlinePlayer();
+
+        // Messages
+        String lastMessage = parts[1]; // The second part contains the message or status
+        String lastShuffledWords = ShuffledWords.getLastShuffledWords(lastMessage);
+
+
+        // Users
+        selectedMessage = selectedMessage.replaceAll("(?i)<User>", user);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
+        selectedMessage = selectedMessage.replaceAll("(?i)<OnlinePlayer>", onlinePlayer);
+
+        // Messages
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", lastShuffledWords);
+        return selectedMessage;
+    }
+
+    public String getPrivateMessageCommand(String lastFullMessage) {
+        String selectedMessage = privateMessageCommand + " " + getRandomMessage();
+        if (selectedMessage.startsWith("/")) selectedMessage = selectedMessage.substring(1);
+        String[] parts = MessageParser.parseMessage(lastFullMessage);
+
+        // Users
+        String user = targetUsername;
+        String lastUser = parts[0]; // Get the last word (username)
+        String onlinePlayer = onlinePlayers.getOnlinePlayer();
+
+        // Messages
+        String lastMessage = parts[1]; // The second part contains the message or status
+        String lastShuffledWords = ShuffledWords.getLastShuffledWords(lastMessage);
+
+
+        // Users
+        selectedMessage = selectedMessage.replaceAll("(?i)<User>", user);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
+        selectedMessage = selectedMessage.replaceAll("(?i)<OnlinePlayer>", onlinePlayer);
+
+        // Messages
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
+        selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", lastShuffledWords);
+        return selectedMessage;
     }
 
 //    public long getPreDelay() {
@@ -266,7 +293,7 @@ public class SpamConfig {
                 "    \"id\": \"" + id + "\",\n" +
                 "    \"targetUsername\": \"" + targetUsername + "\",\n" +
                 "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
-                "    \"command\": \"" + getCommand("") + "\",\n" +
+                "    \"command\": \"" + privateMessageCommand + "\",\n" +
                 "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
                 //"    \"preMinInterval\": " + preMinInterval + ",\n" +
                 //"    \"preMaxInterval\": " + preMaxInterval + ",\n" +
@@ -279,7 +306,7 @@ public class SpamConfig {
                 "    \"maxLoopIntervalInMilliseconds\": " + maxLoopIntervalInMilliseconds + ",\n" +
                 "    \"minTotalLoopMessagesCount\": " + minTotalLoopMessagesCount + ",\n" +
                 "    \"maxTotalLoopMessagesCount\": " + maxTotalLoopMessagesCount + ",\n" +
-                "    \"messages\": " + (messages != null ? messages.toString() : "null") + ",\n" +
+                "    \"messages\": " + (messageTemplates.length != 0 ? Arrays.asList(messageTemplates).toString() : "null") + ",\n" +
                 "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
                 "}";
     }
