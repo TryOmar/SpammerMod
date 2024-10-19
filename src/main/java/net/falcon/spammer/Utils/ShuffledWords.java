@@ -13,7 +13,7 @@ public class ShuffledWords {
 
     public static String getLastShuffledWords(String inputString) {
         // Split the string into words, removing punctuation
-        String[] words = inputString.split("\\W+");
+        String[] words = inputString.split(" ");
 
         // Create a list to store the words
         List<String> wordList = new ArrayList<>();
