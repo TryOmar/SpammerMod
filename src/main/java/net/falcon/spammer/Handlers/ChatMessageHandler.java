@@ -3,10 +3,12 @@ package net.falcon.spammer.Handlers;
 import com.mojang.authlib.GameProfile;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.falcon.spammer.Managers.Chatting;
 import net.falcon.spammer.Managers.Debugging;
 import net.falcon.spammer.Managers.SpamManager;
 import net.falcon.spammer.Models.SpamConfig;
+import net.falcon.spammer.Utils.MessageParser;
 import net.falcon.spammer.Utils.NameMatcher;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.message.MessageType;
@@ -72,12 +74,19 @@ public class ChatMessageHandler {
         return true; // Allow the message to be processed normally if no command matches
     }
 
+    public static String LastFullMessage = "";
+    public static String LastMessage = "";
+    public static String LastMessageSender = "";
     public static void onChatMessageReceived(Text messageText, SignedMessage signedMessage, GameProfile profile, MessageType.Parameters parameters, Instant timestamp) {
+        String messageContent = MessageParser.parseMessage(messageText.getString())[1];
+        LastFullMessage = messageText.getString();
+        LastMessage = messageContent;
+        LastMessageSender = profile.getName();
         // Log the message to the console
         Chatting.AllGeneralMessages(messageText.getString());
 
         //if(messageText.getString().split("»")[1].trim())
-        if(NameMatcher.containsSimilarName(messageText.getString().split("»")[1].trim(), SpamConfig.getUsername()))
+        if(NameMatcher.containsSimilarName(messageContent, SpamConfig.getUsername()))
             Chatting.MentionsGeneralChat(messageText.getString());
 
         if(profile.getName().equals(MinecraftClient.getInstance().getSession().getUsername())) {
