@@ -17,6 +17,7 @@ public class MessageParser {
                 sender = fullMessage.split(splitter)[0].trim();
                 String[] senderParts = sender.split(" "); // Split on spaces
                 sender = senderParts[senderParts.length - 1]; // Get the last element
+                if(senderParts[senderParts.length - 1].contains("[")) sender = senderParts[senderParts.length - 2]; // Get the second last element
                 messageContent = fullMessage.split(splitter)[1].trim();
                 foundSeparator = true;
                 break; // Exit loop if a separator is found
