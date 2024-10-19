@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
 import net.falcon.spammer.Utils.MessageParser;
+import net.falcon.spammer.Utils.OnlinePlayers;
 import net.falcon.spammer.Utils.PatternMatcher;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.*;
@@ -255,7 +256,10 @@ public class SpamManager {
     }
 
     public static void test(String numberOfMessages) {
-        ChatMessageHandler.sendSystemMessage("Test spam function:\n");
+        ChatMessageHandler.sendSystemMessage("Test spam function:\n + ");
+        // number of messages to send to int
+        OnlinePlayers onlinePlayers = new OnlinePlayers();
+        ChatMessageHandler.sendSystemMessage(onlinePlayers.getOnlinePlayer());
     }
 
 
@@ -313,8 +317,8 @@ public class SpamManager {
                         Sleep(postDelay);
                         if(!spamStatus.getOrDefault(id, false)) return;
                         if (isPrivateMessage) {
-                            String command = config.getCommand(lastFullMessage);
-                            ChatMessageHandler.sendCommand(command + " " + message);
+                            String privateMessageCommand = config.getPrivateMessageCommand(lastFullMessage);
+                            ChatMessageHandler.sendCommand(privateMessageCommand);
                         } else {
                             ChatMessageHandler.sendChatMessage(message);
                         }
