@@ -11,6 +11,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -124,18 +125,40 @@ public class Chatting {
     }
 
     // Public messages
-    public static void SentGeneralMessages(String message) { writeToFile(SENT_GENERAL_MESSAGES, message); }
-    public static void ReceivedGeneralMessages(String message) { writeToFile(RECEIVED_GENERAL_MESSAGES, message); }
-    public static void AllGeneralMessages(String message) { writeToFile(ALL_GENERAL_MESSAGES, message); }
+    public static void SentGeneralMessages(String message) {
+        writeToFile(SENT_GENERAL_MESSAGES, message);
+    }
+
+    public static void ReceivedGeneralMessages(String message) {
+        writeToFile(RECEIVED_GENERAL_MESSAGES, message);
+    }
+
+    public static void AllGeneralMessages(String message) {
+        writeToFile(ALL_GENERAL_MESSAGES, message);
+    }
+
     // Private messages
-    public static void SentPrivateMessages(String message) { writeToFile(SENT_PRIVATE_MESSAGES, message); }
-    public static void ReceivedPrivateMessages(String message) { writeToFile(RECEIVED_PRIVATE_MESSAGES, message); }
-    public static void AllPrivateMessages(String message) { writeToFile(ALL_PRIVATE_MESSAGES, message); }
+    public static void SentPrivateMessages(String message) {
+        writeToFile(SENT_PRIVATE_MESSAGES, message);
+    }
+
+    public static void ReceivedPrivateMessages(String message) {
+        writeToFile(RECEIVED_PRIVATE_MESSAGES, message);
+    }
+
+    public static void AllPrivateMessages(String message) {
+        writeToFile(ALL_PRIVATE_MESSAGES, message);
+    }
+
     // System messages
-    public static void SystemMessages(String message) { writeToFile(SYSTEM_MESSAGES, message); }
+    public static void SystemMessages(String message) {
+        writeToFile(SYSTEM_MESSAGES, message);
+    }
 
     // Mentions
-    public static void MentionsGeneralChat(String message) { writeToFile(MENTIONS_GENERAL_CHAT, message); }
+    public static void MentionsGeneralChat(String message) {
+        writeToFile(MENTIONS_GENERAL_CHAT, message);
+    }
 
 
     // New function to retrieve and filter messages
@@ -159,13 +182,18 @@ public class Chatting {
                     String dateTimeStr = parts[0].substring(1).trim(); // Remove leading '['
                     String messageContent = parts[1].trim();
 
-                    // Parse the date and time
-                    LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
-                    messages.add(new Message(dateTime, messageContent));
+                    // Ensure date and time parsing works for all cases
+                    try {
+                        LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
+                        messages.add(new Message(dateTime, messageContent));
+                    } catch (DateTimeParseException e) {
+                        LOGGER.warn("Invalid date format in file: " + fileName + " - " + line);
+                        continue; // Skip invalid lines
+                    }
                 }
 
                 // Sort messages by date/time
-                Collections.sort(messages, Comparator.comparing(Message::getDateTime));
+                messages.sort(Comparator.comparing(Message::getDateTime));
 
                 // Filter messages containing the substring
                 for (Message message : messages) {
@@ -215,4 +243,5 @@ public class Chatting {
             return String.format("[%s] %s", dateTime.format(formatter), content);
         }
     }
+
 }
