@@ -15,7 +15,7 @@ public class SpamConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().disableInnerClassSerialization().create();
 
     public String id;
-    private String targetUsername = getUsername();
+    public String targetUsername = getUsername();
 
     public boolean isPrivateMessage = true;
     private String privateMessageCommand = "/tell <User>";
@@ -23,7 +23,7 @@ public class SpamConfig {
     //private long preMinInterval = 3000;
     //private long preMaxInterval = 6000;
 
-    public String keywordTrigger = "hi";
+    public String keywordTrigger = "hi|hey&!bye";
     private int minMessageCountTrigger = 1;
     private int maxMessageCountTrigger = 1;
 
@@ -70,12 +70,15 @@ public class SpamConfig {
         return getFile(id).exists();
     }
 
-    public static List<String> getAllIds() {
-        List<String> ids = new ArrayList<>();
+    public static List<SpamConfig> getAllIds() {
+        List<SpamConfig> ids = new ArrayList<>();
         File userDir = new File("Spam", getUsername());
         if (!userDir.exists()) return ids;
-        for (File file : userDir.listFiles())
-            ids.add(file.getName().replace(".json", ""));
+        for (File file : userDir.listFiles()){
+            if(!file.getName().endsWith(".json")) continue;
+            String id = file.getName().replace(".json", "");
+            ids.add(new SpamConfig(id));
+        }
         return ids;
     }
 
