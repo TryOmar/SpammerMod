@@ -1,5 +1,6 @@
 package net.falcon.spammer.Utils;
 
+import net.falcon.spammer.Models.SpamConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
 
@@ -34,6 +35,11 @@ public class OnlinePlayers {
     // Method to get a random online player, ensuring no duplicates
     public String getOnlinePlayer() {
         List<String> onlinePlayers = getOnlinePlayers();
+
+        String ourName = MinecraftClient.getInstance().getSession().getUsername();
+        onlinePlayers.remove(ourName);
+
+        System.out.println("Online players: " + onlinePlayers);
 
         // Shuffle the list of online players
         Collections.shuffle(onlinePlayers);

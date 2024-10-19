@@ -86,13 +86,14 @@ public class ChatMessageHandler {
         Chatting.AllGeneralMessages(messageText.getString());
 
         //if(messageText.getString().split("»")[1].trim())
-        if(NameMatcher.containsSimilarName(messageContent, SpamConfig.getUsername()))
+        if (NameMatcher.containsSimilarName(messageContent, MinecraftClient.getInstance().getSession().getUsername())) {
             Chatting.MentionsGeneralChat(messageText.getString());
 
-        if(profile.getName().equals(MinecraftClient.getInstance().getSession().getUsername())) {
-            Chatting.SentGeneralMessages(messageText.getString());
-        } else {
-            Chatting.ReceivedGeneralMessages(messageText.getString());
+            if (profile.getName().equals(MinecraftClient.getInstance().getSession().getUsername())) {
+                Chatting.SentGeneralMessages(messageText.getString());
+            } else {
+                Chatting.ReceivedGeneralMessages(messageText.getString());
+            }
         }
     }
 

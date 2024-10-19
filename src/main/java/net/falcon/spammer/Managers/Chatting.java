@@ -2,6 +2,7 @@ package net.falcon.spammer.Managers;
 
 import net.falcon.spammer.Models.SpamConfig;
 import net.falcon.spammer.Utils.NameMatcher;
+import net.minecraft.client.MinecraftClient;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -40,7 +41,7 @@ public class Chatting {
 
         File spamDir = new File("Spam");
         if (!spamDir.exists()) spamDir.mkdir();
-        File userDir = new File(spamDir, SpamConfig.getUsername());
+        File userDir = new File(spamDir, MinecraftClient.getInstance().getSession().getUsername());
         if (!userDir.exists()) userDir.mkdir();
         File chatDir = new File(userDir, "Chat");
         if (!chatDir.exists()) chatDir.mkdir();
@@ -93,7 +94,7 @@ public class Chatting {
         File spamDir = new File("Spam");
         if (!spamDir.exists()) spamDir.mkdir();
 
-        File userDir = new File(spamDir, SpamConfig.getUsername());
+        File userDir = new File(spamDir, MinecraftClient.getInstance().getSession().getUsername());
         if (!userDir.exists()) userDir.mkdir();
 
         File chatDir = new File(userDir, "Chat");
@@ -167,7 +168,7 @@ public class Chatting {
         List<String> filteredMessages = new ArrayList<>();
 
         for (String fileName : fileNames) {
-            File file = new File("Spam/" + SpamConfig.getUsername() + "/Chat/" + fileName);
+            File file = new File("Spam/" + MinecraftClient.getInstance().getSession().getUsername() + "/Chat/" + fileName);
             if (!file.exists()) continue;
 
             try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
