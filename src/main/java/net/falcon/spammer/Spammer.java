@@ -30,6 +30,7 @@ public class Spammer implements ModInitializer {
 			}
 			// Load all custom commands
 			ChatMessageHandler.loadAllCustomCommands();
+			SpamManager.spamStatus.clear();
 		});
 
 
