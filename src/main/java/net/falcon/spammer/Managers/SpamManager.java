@@ -341,6 +341,7 @@ public class SpamManager {
     }
 
     public static String waitForChatTriggers(String id, int messageThreshold, String substring) {
+        if(messageThreshold == 0 && substring.isEmpty()) return "";
         if (!spamStatus.getOrDefault(id, false)) {
             return "";
         }

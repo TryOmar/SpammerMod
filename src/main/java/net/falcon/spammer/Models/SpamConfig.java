@@ -165,7 +165,7 @@ public class SpamConfig {
 
     public String getMessage(String lastFullMessage) {
         String lastUser = lastFullMessage.split(":")[0];
-        String lastMessage = lastFullMessage.substring(lastUser.length() + 1).trim();
+        String lastMessage = lastFullMessage.substring(Math.min(lastFullMessage.length(), lastUser.length() + 1)).trim();
 
         if (messages.isEmpty()) return ""; // Fallback if no messages are available
 
