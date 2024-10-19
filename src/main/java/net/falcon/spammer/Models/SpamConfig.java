@@ -23,9 +23,6 @@ public class SpamConfig {
     public boolean isPrivateMessage = true;
     private String privateMessageCommand = "/tell <User>";
 
-    //private long preMinInterval = 3000;
-    //private long preMaxInterval = 6000;
-
     public String keywordTrigger = "hi|hey&!bye";
     private long minMessageCountTrigger = 1;
     private long maxMessageCountTrigger = 1;
@@ -46,7 +43,6 @@ public class SpamConfig {
     };
 
     private transient long lastModifiedTime = System.currentTimeMillis();
-    //private transient List<String> messages;
     private transient List<Integer> selectionCounts;
     private transient OnlinePlayers onlinePlayers = new OnlinePlayers();
     private transient Random random = new Random(); // Initialize random
@@ -126,8 +122,6 @@ public class SpamConfig {
                 this.targetUsername = loaded.targetUsername;
                 this.isPrivateMessage = loaded.isPrivateMessage;
                 this.privateMessageCommand = loaded.privateMessageCommand;
-                //this.preMinInterval = loaded.preMinInterval;
-                //this.preMaxInterval = loaded.preMaxInterval;
 
                 this.keywordTrigger = loaded.keywordTrigger;
                 this.minMessageCountTrigger = loaded.minMessageCountTrigger;
@@ -162,15 +156,6 @@ public class SpamConfig {
     }
 
     // -------------------- Message Generation --------------------
-//    private List<String> populateMessages() {
-//        List<String> populatedMessages = new ArrayList<>();
-//        String regex = "(?i)<User>"; // Case-insensitive regex for <User>
-//
-//        for (String template : messageTemplates) {
-//            populatedMessages.add(template.replaceAll(regex, targetUsername));
-//        }
-//        return populatedMessages;
-//    }
 
     private List<Integer> initializeSelectionCounts(int size) {
         List<Integer> counts = new ArrayList<>();
@@ -262,9 +247,6 @@ public class SpamConfig {
         return selectedMessage;
     }
 
-//    public long getPreDelay() {
-//        return preMinInterval + (long) (Math.random() * (preMaxInterval - preMinInterval));
-//    }
 
     public long getPostTriggerDelay() {
         long minInterval = postTriggerMinIntervalInSeconds * 1000; // Convert to milliseconds
@@ -295,9 +277,6 @@ public class SpamConfig {
                 "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
                 "    \"command\": \"" + privateMessageCommand + "\",\n" +
                 "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
-                //"    \"preMinInterval\": " + preMinInterval + ",\n" +
-                //"    \"preMaxInterval\": " + preMaxInterval + ",\n" +
-                //"    \"postTriggerMessageCount\": " + messageCountTrigger + ",\n" +
                 "    \"minMessageCountTrigger\": " + minMessageCountTrigger + ",\n" +
                 "    \"maxMessageCountTrigger\": " + maxMessageCountTrigger + ",\n" +
                 "    \"postTriggerMinIntervalInSeconds\": " + postTriggerMinIntervalInSeconds + ",\n" +
