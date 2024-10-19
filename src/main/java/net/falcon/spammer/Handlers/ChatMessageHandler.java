@@ -3,8 +3,11 @@ package net.falcon.spammer.Handlers;
 import com.mojang.authlib.GameProfile;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
+import net.falcon.spammer.Managers.Chatting;
 import net.falcon.spammer.Managers.Debugging;
 import net.falcon.spammer.Managers.SpamManager;
+import net.falcon.spammer.Models.SpamConfig;
+import net.falcon.spammer.Utils.NameMatcher;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.message.MessageType;
 import net.minecraft.network.message.SignedMessage;
@@ -36,6 +39,9 @@ public class ChatMessageHandler {
 
         registerCustomCommand("!folderSpam", SpamManager::folder);
         registerCustomCommand("!testSpam", SpamManager::test);
+
+        registerCustomCommand("!scanName", SpamManager::scanName);
+        registerCustomCommand("!scanClear", SpamManager::scanClear);
     }
 
     public static void registerCustomCommand(String command, Consumer<String> action) {
@@ -68,26 +74,41 @@ public class ChatMessageHandler {
 
     public static void onChatMessageReceived(Text messageText, SignedMessage signedMessage, GameProfile profile, MessageType.Parameters parameters, Instant timestamp) {
         // Log the message to the console
-        LOGGER.info("Received chat message: " + messageText.getString());
+        Chatting.AllGeneralMessages(messageText.getString());
 
-        // Optionally log more details about the sender or message metadata
-        if (profile != null) {
-            LOGGER.info("Message sent by: " + profile.getName());
-        }
+        //if(messageText.getString().split("»")[1].trim())
+        if(NameMatcher.containsSimilarName(messageText.getString().split("»")[1].trim(), SpamConfig.getUsername()))
+            Chatting.MentionsGeneralChat(messageText.getString());
 
         if(profile.getName().equals(MinecraftClient.getInstance().getSession().getUsername())) {
-            LOGGER.info("Message sent by self: " + profile.getName());
+            Chatting.SentGeneralMessages(messageText.getString());
+        } else {
+            Chatting.ReceivedGeneralMessages(messageText.getString());
         }
+    }
+
+    public static void onSystemMessageReceived(Text messageText, boolean overlay) {
+        if(messageText.getString().contains("[MESSAGE]")){
+            if (messageText.getString().contains("me ➟"))
+                Chatting.SentPrivateMessages(messageText.getString());
+            else if (messageText.getString().contains("➟ me"))
+                Chatting.ReceivedPrivateMessages(messageText.getString());
+            Chatting.AllPrivateMessages(messageText.getString());
+        }
+
+        Chatting.SystemMessages(messageText.getString());
     }
 
     public static void loadChatEvents() {
         ClientSendMessageEvents.ALLOW_CHAT.register(ChatMessageHandler::onChatMessageSent);
         ClientReceiveMessageEvents.CHAT.register(ChatMessageHandler::onChatMessageReceived);
+        ClientReceiveMessageEvents.GAME.register(ChatMessageHandler::onSystemMessageReceived);
     }
 
     // ----------------------------- Helper Functions -----------------------------
     public static void sendCommand(String command) {
-        Debugging.Spam("Sending command: " + command);
+        LOGGER.info("Sending command: " + command);
+        //Debugging.Spam("Sending command: " + command);
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
         client.player.networkHandler.sendChatCommand(command);
@@ -100,6 +121,7 @@ public class ChatMessageHandler {
     }
 
     public static void sendSystemMessage(String message) {
+        LOGGER.info("Sending system message: " + message);
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
         client.inGameHud.getChatHud().addMessage(Text.of(message));
