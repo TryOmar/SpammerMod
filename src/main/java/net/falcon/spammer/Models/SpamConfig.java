@@ -228,7 +228,7 @@ public class SpamConfig {
     }
 
     public String getCommand(String lastFullMessage) {
-        String lastUser = lastFullMessage.split(":")[0];
+        String lastUser = MessageParser.parseMessage(lastFullMessage)[0];
         String modifiedCommand = privateMessageCommand.replaceAll("(?i)<User>", targetUsername);
         modifiedCommand = modifiedCommand.replaceAll("(?i)<LastUser>", lastUser);
         if (modifiedCommand.startsWith("/")) modifiedCommand = modifiedCommand.substring(1);
