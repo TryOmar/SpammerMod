@@ -39,7 +39,7 @@ public class OnlinePlayers {
         String ourName = MinecraftClient.getInstance().getSession().getUsername();
         onlinePlayers.remove(ourName);
 
-        System.out.println("Online players: " + onlinePlayers);
+        //System.out.println("Online players: " + onlinePlayers);
 
         // Shuffle the list of online players
         Collections.shuffle(onlinePlayers);
