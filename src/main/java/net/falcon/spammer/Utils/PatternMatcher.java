@@ -80,7 +80,7 @@ public class PatternMatcher {
                 int start = i;
                 while (i < expr.length() && !ops.contains(expr.charAt(i) + "")) i++;
                 String word = expr.substring(start, i);
-                res.append(mainStr.contains(word) ? "1" : "0");
+                res.append( NameMatcher.containsSimilarName(mainStr, word) ? "1" : "0");
                 i--; // Adjust position after loop
             }
         }
