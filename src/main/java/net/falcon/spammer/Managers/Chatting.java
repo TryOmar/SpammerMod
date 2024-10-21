@@ -4,12 +4,8 @@ import net.falcon.spammer.Models.SpamConfig;
 import net.falcon.spammer.Utils.NameMatcher;
 import net.minecraft.client.MinecraftClient;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -56,7 +52,7 @@ public class Chatting {
             if (file.exists() && file.length() > MAX_FILE_SIZE) {
                 // Read all lines from the file
                 List<String> lines = new ArrayList<>();
-                try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         lines.add(line);
@@ -70,7 +66,7 @@ public class Chatting {
                 }
 
                 // Write back the remaining lines and append the new message
-                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
                     for (String remainingLine : lines) {
                         writer.write(remainingLine);
                         writer.newLine();
@@ -80,7 +76,7 @@ public class Chatting {
                 }
             } else {
                 // If file size is within limits, simply append the new message
-                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, true))) {
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8))) {
                     writer.write(formattedMessage);
                     writer.newLine();
                 }
