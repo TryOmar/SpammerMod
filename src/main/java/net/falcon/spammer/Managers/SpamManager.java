@@ -1,8 +1,10 @@
 package net.falcon.spammer.Managers;
 
+import com.ibm.icu.impl.Pair;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
+import net.falcon.spammer.Utils.MessageDelaySplitter;
 import net.falcon.spammer.Utils.MessageParser;
 import net.falcon.spammer.Utils.OnlinePlayers;
 import net.falcon.spammer.Utils.PatternMatcher;
@@ -318,9 +320,26 @@ public class SpamManager {
                         if(!spamStatus.getOrDefault(id, false)) return;
                         if (isPrivateMessage) {
                             String privateMessageCommand = config.getPrivateMessageCommand(lastFullMessage);
-                            ChatMessageHandler.sendCommand(privateMessageCommand);
+                            String parts[] = privateMessageCommand.split(" ", 3);
+                            String command = parts[0] + " " + parts[1];
+                            String messageContent =  parts[2];
+
+                            List<Pair<Integer, String>> messages = MessageDelaySplitter.splitMessages(messageContent);
+                            for (Pair<Integer, String> pair : messages) {
+                                int delay = pair.first;
+                                String messageToSend = pair.second;
+                                Sleep(delay);
+                                ChatMessageHandler.sendCommand(command + " " + messageToSend);
+                            }
+                            //ChatMessageHandler.sendCommand(privateMessageCommand);
                         } else {
-                            ChatMessageHandler.sendChatMessage(message);
+                            List<Pair<Integer, String>> messages = MessageDelaySplitter.splitMessages(message);
+                            for (Pair<Integer, String> pair : messages) {
+                                int delay = pair.first;
+                                String messageToSend = pair.second;
+                                Sleep(delay);
+                                ChatMessageHandler.sendChatMessage(messageToSend);
+                            }
                         }
 
                         // --- If it was the last message, stop the spam ---
