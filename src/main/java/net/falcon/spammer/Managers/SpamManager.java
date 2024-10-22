@@ -4,10 +4,7 @@ import com.ibm.icu.impl.Pair;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
 import net.falcon.spammer.Models.SpamConfig;
-import net.falcon.spammer.Utils.MessageDelaySplitter;
-import net.falcon.spammer.Utils.MessageParser;
-import net.falcon.spammer.Utils.OnlinePlayers;
-import net.falcon.spammer.Utils.PatternMatcher;
+import net.falcon.spammer.Utils.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.*;
 import net.minecraft.util.Formatting;
@@ -108,9 +105,9 @@ public class SpamManager {
 
             for (SpamConfig config : SpamConfig.getAllIds()) {
                 if (spamStatus.getOrDefault(config.id, false)) {
-                    runningConfigs.append(config.id+" - " + config.targetUsername).append("\n ");
+                    runningConfigs.append(config.id+" - " + config.userTag).append("\n ");
                 } else {
-                    notRunningConfigs.append(config.id+" - "+config.targetUsername).append("\n ");
+                    notRunningConfigs.append(config.id+" - "+config.userTag).append("\n ");
                 }
             }
 
@@ -284,12 +281,13 @@ public class SpamManager {
 
         spamStatus.put(id, true);
         SpamConfig config = new SpamConfig(id);
+        MessageQueueManager messageQueueManager = new MessageQueueManager(config);
 
         Thread thread = new Thread(() -> {
             try {
 
                 long count = config.getTotalLoopMessagesCount();
-                for(long i = 0; i < count && i < config.maxTotalLoopMessagesCount; i++) {
+                for(long i = 0; i < count && i < config.maxMessagesToSend; i++) {
                     // --- Check if the spam is stopped ---
                     if(!spamStatus.getOrDefault(id, false)) break;
                     // --- Update the config ---
@@ -305,13 +303,13 @@ public class SpamManager {
                     if (!spamStatus.getOrDefault(id, false)) break;
 
                     // --- Wait for the loop delay ---
-                    long loopDelay = config.getLoopDelay();
-                    Sleep(loopDelay);
+//                    long loopDelay = config.getLoopDelay(); // Replaced with MessageQueueManager
+//                    Sleep(loopDelay);
 
 
                     // --- Send the message ---
                     String message = config.getMessage(lastFullMessage);
-                    boolean isPrivateMessage = config.isPrivateMessage;
+                    boolean isPrivateMessage = config.useCommand;
                     final long finalI = i;
                     new Thread(() -> {
                         // send teh thread id
@@ -329,7 +327,10 @@ public class SpamManager {
                                 int delay = pair.first;
                                 String messageToSend = pair.second;
                                 Sleep(delay);
-                                ChatMessageHandler.sendCommand(command + " " + messageToSend);
+                                if(spamStatus.getOrDefault(id, false))
+                                    messageQueueManager.enqueueMessage(command + " " + messageToSend, true);
+                                    //ChatMessageHandler.sendCommand(command + " " + messageToSend);
+                                else break;
                             }
                             //ChatMessageHandler.sendCommand(privateMessageCommand);
                         } else {
@@ -338,12 +339,17 @@ public class SpamManager {
                                 int delay = pair.first;
                                 String messageToSend = pair.second;
                                 Sleep(delay);
-                                ChatMessageHandler.sendChatMessage(messageToSend);
+                                if(spamStatus.getOrDefault(id, false))
+                                    messageQueueManager.enqueueMessage(messageToSend, false);
+                                    //ChatMessageHandler.sendChatMessage(messageToSend);
+                                else break;
                             }
                         }
 
                         // --- If it was the last message, stop the spam ---
+                        // TODO: Find a better solution for this.
                         if(finalI == count - 1) {
+                            messageQueueManager.awaitFinishing();
                             spamStatus.put(id, false);
                             Sleep(200);
                             ChatMessageHandler.sendSystemMessage("Spam finished for ID: " + id + "\n");
