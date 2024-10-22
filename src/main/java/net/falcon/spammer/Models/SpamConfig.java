@@ -18,28 +18,29 @@ public class SpamConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().disableInnerClassSerialization().create();
 
     public String id;
-    public String targetUsername = getUsername();
+    public String userTag = getUsername();
 
-    public boolean isPrivateMessage = true;
-    private String privateMessageCommand = "/tell <User>";
+    public boolean useCommand = true;
+    private String commandTemplate = "/tell <User>";
 
     public String keywordTrigger = "hi|hey&!bye";
-    private long minMessageCountTrigger = 1;
-    private long maxMessageCountTrigger = 1;
+    private long minReceiveMessagesTrigger = 1;
+    private long maxReceiveMessagesTrigger = 1;
 
-    private long postTriggerMinIntervalInSeconds = 3; // In seconds
-    private long postTriggerMaxIntervalInSeconds = 6; // In seconds
+    private long localMinDelaySeconds = 3; // In seconds
+    private long localMaxDelaySeconds = 6; // In seconds
 
-    private long minLoopIntervalInMilliseconds = 100;
-    private long maxLoopIntervalInMilliseconds = 500;
+    public long globalMinDelayMillis = 100;
+    public long globalMaxDelayMillis = 500;
 
-    private long minTotalLoopMessagesCount = 5;
-    public long maxTotalLoopMessagesCount = 10;
+    private long minMessagesToSend = 5;
+    public long maxMessagesToSend = 10;
 
     private String[] messageTemplates = {
             "Message1: Target user: <User>, Last user: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
             "Message2: Target user: <User>, Last sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
             "Message3: Current user: <User>, Recent sender: <LastUser>, Last message: <LastMessage>, Shuffled words: <LastShuffledWords>, Online player: <OnlinePlayer>",
+            "Message4: Hi Bro|3000 New Message Hi After 3s!",
     };
 
     private transient long lastModifiedTime = System.currentTimeMillis();
@@ -119,22 +120,22 @@ public class SpamConfig {
             SpamConfig loaded = GSON.fromJson(reader, SpamConfig.class);
             if (loaded != null) {
                 this.id = loaded.id;
-                this.targetUsername = loaded.targetUsername;
-                this.isPrivateMessage = loaded.isPrivateMessage;
-                this.privateMessageCommand = loaded.privateMessageCommand;
+                this.userTag = loaded.userTag;
+                this.useCommand = loaded.useCommand;
+                this.commandTemplate = loaded.commandTemplate;
 
-                this.keywordTrigger = loaded.keywordTrigger;
-                this.minMessageCountTrigger = loaded.minMessageCountTrigger;
-                this.maxMessageCountTrigger = loaded.maxMessageCountTrigger;
+                this.keywordTrigger = loaded.keywordTrigger.replaceAll("(?i)<User>", userTag);
+                this.minReceiveMessagesTrigger = loaded.minReceiveMessagesTrigger;
+                this.maxReceiveMessagesTrigger = loaded.maxReceiveMessagesTrigger;
 
-                this.postTriggerMinIntervalInSeconds = loaded.postTriggerMinIntervalInSeconds;
-                this.postTriggerMaxIntervalInSeconds = loaded.postTriggerMaxIntervalInSeconds;
+                this.localMinDelaySeconds = loaded.localMinDelaySeconds;
+                this.localMaxDelaySeconds = loaded.localMaxDelaySeconds;
 
-                this.minLoopIntervalInMilliseconds = loaded.minLoopIntervalInMilliseconds;
-                this.maxLoopIntervalInMilliseconds = loaded.maxLoopIntervalInMilliseconds;
+                this.globalMinDelayMillis = loaded.globalMinDelayMillis;
+                this.globalMaxDelayMillis = loaded.globalMaxDelayMillis;
 
-                this.minTotalLoopMessagesCount = loaded.minTotalLoopMessagesCount;
-                this.maxTotalLoopMessagesCount = loaded.maxTotalLoopMessagesCount;
+                this.minMessagesToSend = loaded.minMessagesToSend;
+                this.maxMessagesToSend = loaded.maxMessagesToSend;
 
                 this.messageTemplates = loaded.messageTemplates;
                 this.lastModifiedTime = file.lastModified();
@@ -201,7 +202,7 @@ public class SpamConfig {
         String[] parts = MessageParser.parseMessage(lastFullMessage);
 
         // Users
-        String user = targetUsername;
+        String user = userTag;
         String lastUser = parts[0]; // Get the last word (username)
         String onlinePlayer = onlinePlayers.getOnlinePlayer();
 
@@ -222,12 +223,12 @@ public class SpamConfig {
     }
 
     public String getPrivateMessageCommand(String lastFullMessage) {
-        String selectedMessage = privateMessageCommand + " " + getRandomMessage();
+        String selectedMessage = commandTemplate + " " + getRandomMessage();
         if (selectedMessage.startsWith("/")) selectedMessage = selectedMessage.substring(1);
         String[] parts = MessageParser.parseMessage(lastFullMessage);
 
         // Users
-        String user = targetUsername;
+        String user = userTag;
         String lastUser = parts[0]; // Get the last word (username)
         String onlinePlayer = onlinePlayers.getOnlinePlayer();
 
@@ -249,22 +250,22 @@ public class SpamConfig {
 
 
     public long getPostTriggerDelay() {
-        long minInterval = postTriggerMinIntervalInSeconds * 1000; // Convert to milliseconds
-        long maxInterval = postTriggerMaxIntervalInSeconds * 1000; // Convert to milliseconds
+        long minInterval = localMinDelaySeconds * 1000; // Convert to milliseconds
+        long maxInterval = localMaxDelaySeconds * 1000; // Convert to milliseconds
         return minInterval + (long) (Math.random() * (maxInterval - minInterval));
     }
 
-    public long getLoopDelay() {
-        return minLoopIntervalInMilliseconds + (long) (Math.random() * (maxLoopIntervalInMilliseconds - minLoopIntervalInMilliseconds));
+    public long getGlobalDelay() {
+        return globalMinDelayMillis + (long) (Math.random() * (globalMaxDelayMillis - globalMinDelayMillis));
     }
 
 
     public long getMessageCountTrigger() {
-        return minMessageCountTrigger + (long) (Math.random() * (maxMessageCountTrigger - minMessageCountTrigger));
+        return minReceiveMessagesTrigger + (long) (Math.random() * (maxReceiveMessagesTrigger - minReceiveMessagesTrigger));
     }
 
     public long getTotalLoopMessagesCount() {
-        return minTotalLoopMessagesCount + (long) (Math.random() * (maxTotalLoopMessagesCount - minTotalLoopMessagesCount));
+        return minMessagesToSend + (long) (Math.random() * (maxMessagesToSend - minMessagesToSend));
     }
 
     // -------------------- Utility Methods --------------------
@@ -273,18 +274,18 @@ public class SpamConfig {
     public String toString() {
         return "{\n" +
                 "    \"id\": \"" + id + "\",\n" +
-                "    \"targetUsername\": \"" + targetUsername + "\",\n" +
-                "    \"isPrivateMessage\": " + isPrivateMessage + ",\n" +
-                "    \"command\": \"" + privateMessageCommand + "\",\n" +
+                "    \"userTag\": \"" + userTag + "\",\n" +
+                "    \"useCommand\": " + useCommand + ",\n" +
+                "    \"commandTemplate\": \"" + commandTemplate + "\",\n" +
                 "    \"triggerKeyword\": \"" + keywordTrigger + "\",\n" +
-                "    \"minMessageCountTrigger\": " + minMessageCountTrigger + ",\n" +
-                "    \"maxMessageCountTrigger\": " + maxMessageCountTrigger + ",\n" +
-                "    \"postTriggerMinIntervalInSeconds\": " + postTriggerMinIntervalInSeconds + ",\n" +
-                "    \"postTriggerMaxIntervalInSeconds\": " + postTriggerMaxIntervalInSeconds + ",\n" +
-                "    \"minLoopIntervalInMilliseconds\": " + minLoopIntervalInMilliseconds + ",\n" +
-                "    \"maxLoopIntervalInMilliseconds\": " + maxLoopIntervalInMilliseconds + ",\n" +
-                "    \"minTotalLoopMessagesCount\": " + minTotalLoopMessagesCount + ",\n" +
-                "    \"maxTotalLoopMessagesCount\": " + maxTotalLoopMessagesCount + ",\n" +
+                "    \"minReceiveMessagesTrigger\": " + minReceiveMessagesTrigger + ",\n" +
+                "    \"maxReceiveMessagesTrigger\": " + maxReceiveMessagesTrigger + ",\n" +
+                "    \"localMinDelaySeconds\": " + localMinDelaySeconds + ",\n" +
+                "    \"localMaxDelaySeconds\": " + localMaxDelaySeconds + ",\n" +
+                "    \"globalMinDelayMillis\": " + globalMinDelayMillis + ",\n" +
+                "    \"globalMaxDelayMillis\": " + globalMaxDelayMillis + ",\n" +
+                "    \"minMessagesToSend\": " + minMessagesToSend + ",\n" +
+                "    \"maxMessagesToSend\": " + maxMessagesToSend + ",\n" +
                 "    \"messages\": " + (messageTemplates.length != 0 ? Arrays.asList(messageTemplates).toString() : "null") + ",\n" +
                 "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
                 "}";
