@@ -7,7 +7,7 @@ import java.util.List;
 
 public class MessageDelaySplitter {
 
-    private static final int DEFAULT_DELAY = 200; // Default delay in milliseconds
+    private static final int DEFAULT_DELAY = 0; // Default delay in milliseconds
     // Static method to split messages and return a list of pairs (delay, message)
     /**
      * Splits a message string into pairs of (delay, message) based on the '|' delimiter.
