@@ -6,6 +6,7 @@ public class MessageParser {
     public static final String[] MESSAGE_SPLITTERS = { "»", ":" };
 
     public static String[] parseMessage(String fullMessage) {
+        if(fullMessage.isEmpty()) return new String[] { "", "" };
         String sender = "";
         String messageContent = "";
         boolean foundSeparator = false;
