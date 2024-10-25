@@ -348,7 +348,7 @@ public class SpamManager {
 
                         // --- If it was the last message, stop the spam ---
                         // TODO: Find a better solution for this.
-                        if(finalI == count - 1) {
+                        if(finalI == count - 1 || finalI == config.maxMessagesToSend - 1){
                             messageQueueManager.awaitFinishing();
                             spamStatus.put(id, false);
                             Sleep(200);
