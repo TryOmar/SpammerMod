@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Matcher;
 
 public class SpamConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().disableInnerClassSerialization().create();
@@ -211,25 +212,13 @@ public class SpamConfig {
         String lastShuffledWords = ShuffledWords.getLastShuffledWords(lastMessage);
 
 
-        // Users
-        if (user != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<User>", user);
+        // Apply replacements concisely
+        if (user != null) selectedMessage = MessageParser.replaceAllLiteral(selectedMessage, "<User>", user);
+        if (lastUser != null) selectedMessage = MessageParser.replaceAllLiteral(selectedMessage, "<LastUser>", lastUser);
+        if (onlinePlayer != null) selectedMessage = MessageParser.replaceAllLiteral(selectedMessage, "<OnlinePlayer>", onlinePlayer);
+        if (lastMessage != null) selectedMessage = MessageParser.replaceAllLiteral(selectedMessage, "<LastMessage>", lastMessage);
+        if (lastShuffledWords != null) selectedMessage = MessageParser.replaceAllLiteral(selectedMessage, "<LastShuffledWords>", lastShuffledWords);
 
-        if (getUsername() != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<MyUser>", getUsername());
-
-        if (lastUser != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
-
-        if (onlinePlayer != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<OnlinePlayer>", onlinePlayer);
-
-        // Messages
-        if (lastMessage != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
-
-        if (lastShuffledWords != null)
-            selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", lastShuffledWords);
         return selectedMessage;
     }
 
