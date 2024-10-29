@@ -1,5 +1,8 @@
 package net.falcon.spammer.Utils;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class MessageParser {
 
     // Public static variables for message splitters
@@ -32,6 +35,12 @@ public class MessageParser {
         }
 
         return new String[] { sender, messageContent };
+    }
+
+
+    // Short and concise replace function
+    public static String replaceAllLiteral(String input, String pattern, String replacement) {
+        return input.replaceAll("(?i)" + Pattern.quote(pattern), Matcher.quoteReplacement(replacement));
     }
 
     public static void main(String[] args) {
