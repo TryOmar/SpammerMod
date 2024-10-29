@@ -104,5 +104,14 @@ To use this mod effectively:
 5. **Use chat scanning** to monitor in-game chat with the `!scanChat <name>` command, which looks for specific usernames or keywords.
 6. **Access configuration files** through the game using `!folderSpam` for easy management.
 
+## Todo
+- [ ] Show chat error message if the spam configuration is not correctly set up.
+- [ ] Add <OnlinePlayersNumber> tag to get the number of online players.
+- [ ] Allow get triggers from System chat.
+- [ ] Add GUI support for easier configuration management.
+- [ ] Test the mod in different Minecraft versions for compatibility.
+- [ ] Test the mod in different multiplayer servers to ensure proper functionality.
+- [ ] Add more Template examples for different spamming scenarios.
+
 ## Conclusion
 The **Spam Manager** provides a flexible and customizable way to automate chat interactions in Minecraft. Whether for fun or more practical uses, this mod offers a wide range of options for spamming and chat management.
