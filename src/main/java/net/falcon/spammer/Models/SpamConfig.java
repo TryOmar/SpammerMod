@@ -212,22 +212,23 @@ public class SpamConfig {
 
 
         // Users
-        if(selectedMessage.contains("<User>"))
+        if (user != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<User>", user);
 
-        if(selectedMessage.contains("<MyUser>"))
+        if (getUsername() != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<MyUser>", getUsername());
 
-        if(selectedMessage.contains("<LastUser>"))
+        if (lastUser != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<LastUser>", lastUser);
 
-        if(selectedMessage.contains("<OnlinePlayer>"))
+        if (onlinePlayer != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<OnlinePlayer>", onlinePlayer);
 
         // Messages
-        if(selectedMessage.contains("<LastMessage>"))
+        if (lastMessage != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<LastMessage>", lastMessage);
-        if(selectedMessage.contains("<LastShuffledWords>"))
+
+        if (lastShuffledWords != null)
             selectedMessage = selectedMessage.replaceAll("(?i)<LastShuffledWords>", lastShuffledWords);
         return selectedMessage;
     }
