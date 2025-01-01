@@ -3,6 +3,15 @@
 ## Overview
 The **Spam Manager** is a Minecraft mod for automating and managing chat spamming through a configuration system. It allows users to create, manage, and trigger spam messages within the game, offering full control over various spam-related tasks.
 
+## Important Disclaimer
+This mod is intended for legitimate purposes such as:
+- Automating repetitive messages for testing purposes
+- Creating simple auto-response systems
+- Testing anti-spam mechanisms on servers
+- Development and debugging of chat-related features
+
+**Note:** We are not responsible for any misuse of this mod. Users must comply with server rules and guidelines. Using this mod to harass other players or break server rules is strictly discouraged and may result in consequences from server administrators.
+
 ## Features
 - **Command-Based Management**: Supports multiple commands for handling spam configurations, including creating, deleting, renaming, and running spam sessions.
 - **Configuration Files**: Spam behavior is controlled via configuration files, each identified by a unique ID.
