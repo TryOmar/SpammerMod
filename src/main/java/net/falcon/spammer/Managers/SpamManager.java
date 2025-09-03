@@ -32,7 +32,8 @@ public class SpamManager {
                 "!stopSpam - Stop all spam\n" +
                 "!folderSpam - Open the spam folder\n" +
                 "!scanChat <name> - Scan the chat for the given name\n" +
-                "!scanClear - Clear the scan result file\n";
+                "!scanClear - Clear the scan result file\n" +
+                "F6 - Open Config GUI\n";
 
         ChatMessageHandler.sendSystemMessage(helpMessage);
 

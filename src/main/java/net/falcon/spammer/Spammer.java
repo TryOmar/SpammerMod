@@ -1,9 +1,10 @@
 package net.falcon.spammer;
 
 import net.fabricmc.api.ModInitializer;
-
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.falcon.spammer.Handlers.ChatMessageHandler;
+import net.falcon.spammer.Keybinds.SpammerKeybinds;
 import net.falcon.spammer.Managers.Debugging;
 import net.falcon.spammer.Managers.SpamManager;
 import net.minecraft.client.MinecraftClient;
@@ -20,6 +21,13 @@ public class Spammer implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("Hello Fabric world!");
 
+		// Register keybinds
+		SpammerKeybinds.registerKeybinds();
+
+		// Register keybind tick handler
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			SpammerKeybinds.handleKeybinds(client);
+		});
 
 		ClientPlayConnectionEvents.INIT.register((ClientPlayNetworkHandler handler, MinecraftClient client) -> {
 			Debugging.Spam("Client connected to server: " + handler.getConnection().getAddress());

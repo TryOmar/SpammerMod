@@ -99,6 +99,10 @@ public class SpamConfig {
         return new File(userDir, filename);
     }
 
+    public static File getConfigFile(String id) {
+        return getFile(id);
+    }
+
     // -------------------- Read/Write Configuration --------------------
     public void read() {
         File file = getFile(id);
@@ -145,6 +149,17 @@ public class SpamConfig {
                 }
                 System.out.println("Spam configuration loaded from file: " + file.getPath());
             }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // -------------------- Save Configuration --------------------
+    public void save() {
+        File file = getFile(id);
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+            GSON.toJson(this, writer);
+            lastModifiedTime = file.lastModified();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -290,4 +305,26 @@ public class SpamConfig {
                 "    \"lastModifiedTime\": " + lastModifiedTime + "\n" +
                 "}";
     }
+
+    // -------------------- Getters / Setters for private fields --------------------
+    public String getCommandTemplate() { return commandTemplate; }
+    public void setCommandTemplate(String commandTemplate) { this.commandTemplate = commandTemplate; }
+
+    public long getMinReceiveMessagesTrigger() { return minReceiveMessagesTrigger; }
+    public void setMinReceiveMessagesTrigger(long value) { this.minReceiveMessagesTrigger = value; }
+
+    public long getMaxReceiveMessagesTrigger() { return maxReceiveMessagesTrigger; }
+    public void setMaxReceiveMessagesTrigger(long value) { this.maxReceiveMessagesTrigger = value; }
+
+    public long getLocalMinDelaySeconds() { return localMinDelaySeconds; }
+    public void setLocalMinDelaySeconds(long value) { this.localMinDelaySeconds = value; }
+
+    public long getLocalMaxDelaySeconds() { return localMaxDelaySeconds; }
+    public void setLocalMaxDelaySeconds(long value) { this.localMaxDelaySeconds = value; }
+
+    public long getMinMessagesToSend() { return minMessagesToSend; }
+    public void setMinMessagesToSend(long value) { this.minMessagesToSend = value; }
+
+    public String[] getMessageTemplates() { return messageTemplates; }
+    public void setMessageTemplates(String[] templates) { this.messageTemplates = templates; }
 }
